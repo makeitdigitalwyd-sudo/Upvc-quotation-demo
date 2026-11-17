@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MakeIt Digital demo — UPVC Quotation & Cutting Schedule</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <script>
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace']
+            }
+          }
+        }
+      };
+    }
+  </script>
+  <style>
+    :root {
+      --bg-canvas: #f7f7f5;
+      --bg-surface: #ffffff;
+      --border-subtle: #e5e5e0;
+      --accent: #0f766e;
+    }
+    html.dark {
+      --bg-canvas: #0b0f14;
+      --bg-surface: #111820;
+      --border-subtle: #1f2937;
+      --accent: #14b8a6;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-canvas);
+    }
+    .font-mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.35); border-radius: 9999px; }
+    @media print {
+      body * { visibility: hidden !important; }
+      #print-area, #print-area * { visibility: visible !important; }
+      #print-area {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 20px !important;
+      }
+    }
+  </style>
+</head>
+<body class="text-stone-900 dark:text-stone-100 antialiased selection:bg-teal-500/20">
+
+  <!-- Toast Stack -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- Login Screen (Accessible via Logout) -->
+  <div id="login-screen" class="hidden min-h-screen flex items-center justify-center bg-stone-100 dark:bg-slate-950 p-4">
+    <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-stone-200 dark:border-slate-800 p-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-sm">M</div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight">MakeIt Digital demo</h1>
+          <p class="text-xs text-stone-500 dark:text-slate-400">UPVC Quotation • Cutting Schedule • Costing</p>
+        </div>
+      </div>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-stone-600 dark:text-slate-300 mb-1.5">Email Address</label>
+          <input id="login-email" type="email" value="demo@makeitdigital.in" required class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-stone-600 dark:text-slate-300 mb-1.5">Password</label>
+          <input id="login-password" type="password" value="demo1234" required class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600" />
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <button type="button" id="btn-demo-fill" class="font-semibold text-teal-700 dark:text-teal-400 hover:underline">Fill Demo Credentials</button>
+          <span class="text-stone-400">Admin Access</span>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm transition shadow-sm">Enter Workspace</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app-shell" class="min-h-screen flex">
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden"></div>
+
+    <!-- Clean Minimal Sidebar -->
+    <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-64 bg-white dark:bg-slate-900 border-r border-stone-200 dark:border-slate-800 flex flex-col transition-transform duration-200 -translate-x-full lg:translate-x-0 shrink-0">
+      <div class="h-16 px-5 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-bold text-sm">M</div>
+          <div>
+            <div class="font-bold text-sm tracking-tight">MakeIt Digital demo</div>
+            <div class="text-[11px] text-stone-400">UPVC Fabrication Suite</div>
+          </div>
+        </div>
+        <button id="btn-close-sidebar" class="lg:hidden p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-slate-800" aria-label="Close sidebar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-1 text-[13px]">
+        <div class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">Workspace</div>
+        <button data-nav="dashboard" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button data-nav="create-quotation" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          <span>New Quotation</span>
+        </button>
+        <button data-nav="quotes" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>View Quotes</span>
+        </button>
+
+        <div class="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">Directory & Analytics</div>
+        <button data-nav="clients" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Clients</span>
+        </button>
+        <button data-nav="employees" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span>Employees</span>
+        </button>
+        <button data-nav="reports" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span>Reports</span>
+        </button>
+
+        <div class="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">Configuration</div>
+        <button data-nav="settings" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Settings</span>
+        </button>
+        <button data-nav="account" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>My Account</span>
+        </button>
+      </nav>
+
+      <!-- Bottom User Card -->
+      <div class="p-3 border-t border-stone-200 dark:border-slate-800 space-y-2">
+        <div class="relative">
+          <button id="btn-user-menu" class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-slate-800 transition text-left">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0">MD</div>
+            <div class="min-w-0 flex-1">
+              <div id="sidebar-user-name" class="text-xs font-semibold truncate">MakeIt Admin</div>
+              <div class="text-[11px] text-stone-400 truncate">Admin • MakeIt Digital</div>
+            </div>
+            <svg class="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+          </button>
+          <div id="user-dropdown" class="hidden absolute bottom-12 left-0 right-0 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-stone-200 dark:border-slate-700 py-1.5 z-50 text-xs">
+            <button data-nav="account" class="w-full px-3.5 py-2 text-left hover:bg-stone-100 dark:hover:bg-slate-700">My Account</button>
+            <button data-nav="employees" data-action="open-add-employee" class="w-full px-3.5 py-2 text-left hover:bg-stone-100 dark:hover:bg-slate-700">Add Employee</button>
+            <button data-nav="settings" class="w-full px-3.5 py-2 text-left hover:bg-stone-100 dark:hover:bg-slate-700">Settings</button>
+            <div class="my-1 border-t border-stone-200 dark:border-slate-700"></div>
+            <button id="btn-logout" class="w-full px-3.5 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40">Logout</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-2 text-[11px] text-stone-400">
+          <span>Auto-saved locally</span>
+          <button id="btn-reset-demo" class="text-teal-700 dark:text-teal-400 hover:underline font-medium">Reset Demo</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Column -->
+    <div class="flex-1 min-w-0 flex flex-col">
+      <!-- Top Header -->
+      <header class="sticky top-0 z-20 h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-stone-200 dark:border-slate-800 px-4 lg:px-8 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <button id="btn-open-sidebar" class="lg:hidden p-2 rounded-xl text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800" aria-label="Open menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div>
+            <h2 id="page-title" class="text-base font-bold tracking-tight truncate">Dashboard</h2>
+            <p id="page-subtitle" class="text-[11px] text-stone-400 hidden sm:block truncate">MakeIt Digital demo — UPVC quotations, clients, and cutting schedules</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="top-new-quote" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold transition shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            New Quote
+          </button>
+
+          <button id="btn-theme-toggle" class="p-2 rounded-xl border border-stone-200 dark:border-slate-700 text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 transition" title="Toggle Theme" aria-label="Toggle Theme">
+            <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          </button>
+
+          <button id="btn-quick-drawer" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-200 dark:border-slate-700 text-stone-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800 text-xs font-semibold transition" title="Quick Quotes Drawer">
+            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="hidden md:inline">Quick Quotes</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main View -->
+      <main id="main-view" class="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto space-y-6"></main>
+    </div>
+  </div>
+
+  <!-- Right-Side Quick Quotes Drawer -->
+  <div id="quick-drawer-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+  <aside id="quick-drawer" class="fixed top-0 right-0 z-50 h-screen w-80 max-w-full bg-white dark:bg-slate-900 border-l border-stone-200 dark:border-slate-800 shadow-2xl transform translate-x-full transition-transform duration-200 flex flex-col">
+    <div class="p-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <h3 class="font-bold text-sm">Quick Quotes</h3>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-drawer-add" class="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold">+ Add</button>
+        <button id="btn-close-drawer" class="p-1 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="quick-drawer-list" class="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-thin"></div>
+  </aside>
+
+  <!-- In-Page Modal -->
+  <div id="modal-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-box" class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-slate-800 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between">
+        <h3 id="modal-title" class="font-bold text-base">Modal</h3>
+        <button id="btn-close-modal" class="p-1.5 rounded-lg text-stone-400 hover:bg-stone-100 dark:hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="p-5 overflow-y-auto scrollbar-thin flex-1"></div>
+      <div id="modal-footer" class="px-5 py-3 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2 bg-stone-50 dark:bg-slate-900/70"></div>
+    </div>
+  </div>
+
+  <div id="print-area" class="hidden"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const STORAGE_KEY = 'makeit_digital_demo_upvc_v3';
+
+      const PRODUCT_CATEGORIES = [
+        { id: 'casement-window', name: 'Casement Window', desc: 'Side-hung opening sash with multi-point espag lock & friction stays', defaultW: 4, defaultH: 4 },
+        { id: 'casement-door', name: 'Casement Door', desc: 'Heavy-duty balcony or entrance door with 3D hinges & cylinder lock', defaultW: 3, defaultH: 7 },
+        { id: 'sliding-window', name: 'Sliding Window', desc: '2-track or 3-track smooth gliding sashes with optional mosquito mesh', defaultW: 5, defaultH: 4 },
+        { id: 'sliding-door', name: 'Sliding Door', desc: 'Full-height patio & balcony slider with heavy tandem rollers', defaultW: 6, defaultH: 7 },
+        { id: 'ventilator', name: 'Ventilators', desc: 'Louvered bathroom/utility ventilator with exhaust fan provision', defaultW: 2, defaultH: 2 },
+        { id: 'fixed-window', name: 'Fixed Windows', desc: 'Non-opening picture frame for maximum daylight & sound insulation', defaultW: 4, defaultH: 4 },
+        { id: 'top-hung', name: 'Top Hung', desc: 'Awning-style top-hinged window for rain-safe ventilation', defaultW: 3, defaultH: 2.5 }
+      ];
+
+      const DEFAULT_PROFILES = [
+        { name: 'Window Tech', series: ['60mm Casement', '62mm 2-Track Sliding', '80mm 3-Track Sliding', '70mm Heavy Door'], baseRate: 520 },
+        { name: 'Veka', series: ['Softline 58 Casement', 'EkoSlide 60', 'i70 3-Track', '70mm Balcony Door'], baseRate: 640 },
+        { name: 'Deceuninck', series: ['Zendow 70', 'Bella Sliding', 'Monorail Slider', 'Everest Max'], baseRate: 680 },
+        { name: 'Aluplast', series: ['IDEAL 4000', 'Smart-Slide', 'Multi-Slide 85', 'IDEAL 5000'], baseRate: 660 },
+        { name: 'Prominance', series: ['60mm Casement', '60mm 2-Track', '88mm 3-Track', '60mm Door'], baseRate: 495 }
+      ];
+
+      const GLASS_OPTIONS = [
+        { name: '5mm Clear Glass', rate: 0 },
+        { name: '6mm Toughened Clear', rate: 65 },
+        { name: '5mm Frosted / Pinhead', rate: 35 },
+        { name: '6mm Tinted Reflective', rate: 85 },
+        { name: '20mm DGU (Double Glazed)', rate: 190 }
+      ];
+
+      const COLOR_OPTIONS = [
+        { name: 'Classic White', hex: '#f8fafc', border: '#94a3b8', surcharge: 0 },
+        { name: 'Walnut Woodgrain', hex: '#78350f', border: '#451a03', surcharge: 120 },
+        { name: 'Anthracite Grey', hex: '#334155', border: '#0f172a', surcharge: 95 },
+        { name: 'Golden Oak', hex: '#b45309', border: '#78350f', surcharge: 115 }
+      ];
+
+      function defaultState() {
+        return {
+          auth: { loggedIn: true, email: 'demo@makeitdigital.in', role: 'Admin' },
+          theme: 'light',
+          account: {
+            name: 'MakeIt Admin',
+            email: 'demo@makeitdigital.in',
+            phone: '+91 98470 11223',
+            location: 'Kochi, Kerala',
+            address: 'MG Road, Ernakulam, Kochi - 682016'
+          },
+          settings: {
+            companyName: 'MakeIt Digital demo',
+            gstin: '32AABCM1429B1Z5',
+            address: 'Plot 42, Industrial Estate, Kalamassery',
+            location: 'Kochi, Kerala',
+            contact: '+91 98470 11223',
+            bankName: 'State Bank of India',
+            branch: 'Kalamassery Main',
+            accountType: 'Current Account',
+            accountNumber: '309811442289',
+            ifsc: 'SBIN0008642',
+            terms: '1. 50% advance along with confirmed work order.\n2. 40% upon material readiness before dispatch.\n3. 10% immediately after installation.\n4. Quote validity: 15 days from issue date.\n5. Scaffolding / civil cutting by client unless specified.',
+            profiles: JSON.parse(JSON.stringify(DEFAULT_PROFILES)),
+            hardware: {
+              profileWastagePct: 6,
+              steelPriceFt: 42,
+              meshPriceSqft: 65,
+              grillPriceSqft: 145,
+              meshGasketMeter: 18,
+              profileGasketMeter: 22,
+              louverBladesMeter: 95,
+              screwsCount: 3,
+              aluminiumTrackFt: 58,
+              groveRollerCount: 85,
+              meshRollerCount: 75,
+              weatherStripFt: 16,
+              bumpArrestorCount: 25,
+              dustArrestorFt: 14,
+              meshJumpArrestorCount: 22,
+              adjustRollerCount: 90,
+              doorStopperCount: 160,
+              touchLockCount: 240,
+              frictionStay12: 320,
+              frictionStay14: 380,
+              frictionStay16: 440,
+              frictionStay18: 510,
+              frictionStay20: 590,
+              espagSSCount: 460,
+              securityClipCount: 35,
+              runnerBlockCount: 28
+            }
+          },
+          employees: [
+            { id: 'EMP-101', name: 'Arun Kumar', phone: '+91 98951 22334', email: 'arun@makeitdigital.in', location: 'Kochi', address: 'Edappally, Kochi', role: 'Senior Site Engineer' },
+            { id: 'EMP-102', name: 'Nithin Raj', phone: '+91 97450 88991', email: 'nithin@makeitdigital.in', location: 'Thrissur', address: 'Poothole, Thrissur', role: 'Fabrication Engineer' },
+            { id: 'EMP-103', name: 'Faisal Rahman', phone: '+91 94472 55667', email: 'faisal@makeitdigital.in', location: 'Malappuram', address: 'Manjeri, Malappuram', role: 'Project Engineer' }
+          ],
+          clients: [
+            { id: 'CL-01', name: 'Meera Nair', phone: '+91 98461 33445', location: 'Kakkanad, Kochi', address: 'Villa 14, Skyline Palms, Kakkanad' },
+            { id: 'CL-02', name: 'Varghese Thomas', phone: '+91 94470 77889', location: 'Pala, Kottayam', address: 'Kurian Arcade, Main Road, Pala' },
+            { id: 'CL-03', name: 'Sandeep Menon', phone: '+91 98952 44112', location: 'Aluva, Kochi', address: 'Riverside Residency, Aluva' }
+          ],
+          quotes: [
+            {
+              id: 'QT-20261116-101',
+              date: '2026-11-16',
+              clientId: 'CL-01',
+              clientName: 'Meera Nair',
+              clientPhone: '+91 98461 33445',
+              clientAddress: 'Villa 14, Skyline Palms, Kakkanad',
+              siteAddress: 'Villa 14, Skyline Palms, Kakkanad, Kochi',
+              engineerId: 'EMP-101',
+              engineerName: 'Arun Kumar',
+              requirements: 'Mosquito mesh for all bedroom windows and toughened glass for living room slider.',
+              discountPct: 0,
+              gstPct: 18,
+              status: 'Approved',
+              items: [
+                {
+                  id: 'IT-1',
+                  categoryId: 'sliding-window',
+                  categoryName: 'Sliding Window',
+                  label: 'W1 - Master Bedroom',
+                  unit: 'ft',
+                  width: 5,
+                  height: 4,
+                  outerFrameMm: 62,
+                  qty: 2,
+                  panels: ['shutter', 'shutter'],
+                  topFixed: false,
+                  bottomFixed: false,
+                  mesh: true,
+                  grill: false,
+                  profile: 'Window Tech',
+                  series: '80mm 3-Track Sliding',
+                  glass: '6mm Toughened Clear',
+                  color: 'Classic White',
+                  ratePerSqft: 650
+                },
+                {
+                  id: 'IT-2',
+                  categoryId: 'casement-window',
+                  categoryName: 'Casement Window',
+                  label: 'W2 - Study Room',
+                  unit: 'ft',
+                  width: 4,
+                  height: 4,
+                  outerFrameMm: 60,
+                  qty: 1,
+                  panels: ['fixed', 'shutter'],
+                  topFixed: true,
+                  bottomFixed: false,
+                  mesh: true,
+                  grill: true,
+                  profile: 'Window Tech',
+                  series: '60mm Casement',
+                  glass: '5mm Clear Glass',
+                  color: 'Classic White',
+                  ratePerSqft: 730
+                }
+              ]
+            },
+            {
+              id: 'QT-20261115-102',
+              date: '2026-11-15',
+              clientId: 'CL-02',
+              clientName: 'Varghese Thomas',
+              clientPhone: '+91 94470 77889',
+              clientAddress: 'Kurian Arcade, Main Road, Pala',
+              siteAddress: 'Kurian Arcade, 2nd Floor, Pala, Kottayam',
+              engineerId: 'EMP-102',
+              engineerName: 'Nithin Raj',
+              requirements: 'Walnut finish balcony sliding door + 3 bathroom ventilators.',
+              discountPct: 0,
+              gstPct: 18,
+              status: 'Pending',
+              items: [
+                {
+                  id: 'IT-3',
+                  categoryId: 'sliding-door',
+                  categoryName: 'Sliding Door',
+                  label: 'SD1 - Balcony',
+                  unit: 'ft',
+                  width: 6,
+                  height: 7,
+                  outerFrameMm: 80,
+                  qty: 1,
+                  panels: ['shutter', 'fixed', 'shutter'],
+                  topFixed: false,
+                  bottomFixed: false,
+                  mesh: true,
+                  grill: false,
+                  profile: 'Veka',
+                  series: 'i70 3-Track',
+                  glass: '6mm Toughened Clear',
+                  color: 'Walnut Woodgrain',
+                  ratePerSqft: 890
+                },
+                {
+                  id: 'IT-4',
+                  categoryId: 'ventilator',
+                  categoryName: 'Ventilators',
+                  label: 'V1 - Bathrooms',
+                  unit: 'ft',
+                  width: 2,
+                  height: 2,
+                  outerFrameMm: 60,
+                  qty: 3,
+                  panels: ['louver'],
+                  topFixed: false,
+                  bottomFixed: false,
+                  mesh: false,
+                  grill: true,
+                  profile: 'Prominance',
+                  series: '60mm Casement',
+                  glass: '5mm Frosted / Pinhead',
+                  color: 'Classic White',
+                  ratePerSqft: 675
+                }
+              ]
+            },
+            {
+              id: 'QT-20261112-103',
+              date: '2026-11-12',
+              clientId: 'CL-03',
+              clientName: 'Sandeep Menon',
+              clientPhone: '+91 98952 44112',
+              clientAddress: 'Riverside Residency, Aluva',
+              siteAddress: 'Riverside Residency, Aluva, Kochi',
+              engineerId: 'EMP-103',
+              engineerName: 'Faisal Rahman',
+              requirements: 'DGU acoustic glass for street-facing casement door.',
+              discountPct: 0,
+              gstPct: 18,
+              status: 'Invoiced',
+              items: [
+                {
+                  id: 'IT-5',
+                  categoryId: 'casement-door',
+                  categoryName: 'Casement Door',
+                  label: 'D1 - Front Patio',
+                  unit: 'ft',
+                  width: 3,
+                  height: 7,
+                  outerFrameMm: 70,
+                  qty: 1,
+                  panels: ['shutter'],
+                  topFixed: false,
+                  bottomFixed: false,
+                  mesh: false,
+                  grill: false,
+                  profile: 'Deceuninck',
+                  series: 'Zendow 70',
+                  glass: '20mm DGU (Double Glazed)',
+                  color: 'Anthracite Grey',
+                  ratePerSqft: 965
+                }
+              ]
+            }
+          ]
+        };
+      }
+
+      let state = loadState();
+      let currentRoute = 'dashboard';
+      let activeQuoteId = state.quotes[0] ? state.quotes[0].id : null;
+      let configuratorDraft = null;
+      let activeReportTab = 'monthly';
+      let quotesPage = 1;
+      let chartInstance = null;
+
+      function getProfiles() {
+        return state.settings.profiles && state.settings.profiles.length ? state.settings.profiles : DEFAULT_PROFILES;
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && Array.isArray(parsed.quotes) && parsed.settings) {
+              if (!parsed.settings.profiles) parsed.settings.profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+              return parsed;
+            }
+          }
+        } catch (e) { /* fallback */ }
+        return defaultState();
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) { /* ignore */ }
+      }
+
+      function applyTheme() {
+        document.documentElement.classList.toggle('dark', state.theme === 'dark');
+      }
+
+      function formatINR(num) {
+        const val = Math.round(Number(num) || 0);
+        return '₹' + val.toLocaleString('en-IN');
+      }
+
+      function toFeet(val, unit) {
+        const n = Number(val) || 0;
+        if (unit === 'mm') return n / 304.8;
+        if (unit === 'in') return n / 12;
+        return n;
+      }
+
+      function toMm(val, unit) {
+        const n = Number(val) || 0;
+        if (unit === 'ft') return Math.round(n * 304.8);
+        if (unit === 'in') return Math.round(n * 25.4);
+        return Math.round(n);
+      }
+
+      function calcItemMetrics(item) {
+        const wFt = Math.max(0.5, toFeet(item.width, item.unit || 'ft'));
+        const hFt = Math.max(0.5, toFeet(item.height, item.unit || 'ft'));
+        const qty = Math.max(1, Number(item.qty) || 1);
+        const singleSqft = Math.max(0.5, wFt * hFt);
+        const totalSqft = singleSqft * qty;
+
+        const hw = state.settings.hardware;
+        const profiles = getProfiles();
+        const prof = profiles.find(p => p.name === item.profile) || profiles[0];
+        const glassObj = GLASS_OPTIONS.find(g => g.name === item.glass) || GLASS_OPTIONS[0];
+        const colorObj = COLOR_OPTIONS.find(c => c.name === item.color) || COLOR_OPTIONS[0];
+
+        const computedRate = Number(prof.baseRate) + glassObj.rate + colorObj.surcharge + (item.mesh ? Number(hw.meshPriceSqft) : 0) + (item.grill ? Number(hw.grillPriceSqft) : 0);
+        const baseRate = item.ratePerSqft ? Number(item.ratePerSqft) : computedRate;
+        const lineTotal = Math.round(totalSqft * baseRate);
+
+        const perimeterFt = 2 * (wFt + hFt) * qty;
+        const shutterCount = Math.max(1, (item.panels || ['shutter']).filter(p => p === 'shutter').length) * qty;
+        const isSliding = item.categoryId.includes('sliding');
+
+        let hardwareCost = 0;
+        hardwareCost += perimeterFt * (Number(hw.steelPriceFt) * 0.45);
+        hardwareCost += (perimeterFt * 0.3048) * Number(hw.profileGasketMeter);
+        hardwareCost += qty * 16 * Number(hw.screwsCount);
+
+        if (isSliding) {
+          hardwareCost += wFt * qty * Number(hw.aluminiumTrackFt);
+          hardwareCost += shutterCount * 2 * Number(hw.groveRollerCount);
+          hardwareCost += shutterCount * Number(hw.touchLockCount);
+          hardwareCost += perimeterFt * Number(hw.weatherStripFt);
+          if (item.mesh) {
+            hardwareCost += shutterCount * 2 * Number(hw.meshRollerCount);
+            hardwareCost += totalSqft * Number(hw.meshPriceSqft) * 0.55;
+          }
+        } else if (item.categoryId === 'ventilator') {
+          hardwareCost += (wFt * 0.3048) * 5 * Number(hw.louverBladesMeter) * qty;
+        } else {
+          hardwareCost += shutterCount * Number(hw.espagSSCount);
+          hardwareCost += shutterCount * 2 * Number(hw.frictionStay16);
+          if (item.categoryId === 'casement-door') hardwareCost += qty * Number(hw.doorStopperCount);
+        }
+        if (item.grill) hardwareCost += totalSqft * Number(hw.grillPriceSqft) * 0.6;
+
+        const wastageMult = 1 + (Number(hw.profileWastagePct) || 0) / 100;
+        const profileCost = Math.round(totalSqft * (Number(prof.baseRate) * 0.42) * wastageMult);
+        const productionCost = Math.round(hardwareCost + profileCost);
+        const marginCost = Math.max(0, lineTotal - productionCost);
+
+        return {
+          wFt, hFt,
+          wMm: toMm(item.width, item.unit || 'ft'),
+          hMm: toMm(item.height, item.unit || 'ft'),
+          qty,
+          singleSqft: Number(singleSqft.toFixed(2)),
+          totalSqft: Number(totalSqft.toFixed(2)),
+          ratePerSqft: Math.round(baseRate),
+          lineTotal,
+          hardwareCost: Math.round(hardwareCost),
+          profileCost,
+          productionCost,
+          marginCost
+        };
+      }
+
+      function calcQuoteTotals(quote) {
+        let subtotal = 0, totalSqft = 0, hardwareCost = 0, profileCost = 0, productionCost = 0, marginCost = 0;
+        (quote.items || []).forEach(it => {
+          const m = calcItemMetrics(it);
+          subtotal += m.lineTotal;
+          totalSqft += m.totalSqft;
+          hardwareCost += m.hardwareCost;
+          profileCost += m.profileCost;
+          productionCost += m.productionCost;
+          marginCost += m.marginCost;
+        });
+        const discPct = Math.max(0, Math.min(100, Number(quote.discountPct) || 0));
+        const discountAmt = Math.round(subtotal * (discPct / 100));
+        const taxable = Math.max(0, subtotal - discountAmt);
+        const gstPct = quote.gstPct !== undefined ? Number(quote.gstPct) : 18;
+        const gst = Math.round(taxable * (gstPct / 100));
+        const grandTotal = taxable + gst;
+        return {
+          itemCount: (quote.items || []).reduce((s, i) => s + (Number(i.qty) || 1), 0),
+          totalSqft: Number(totalSqft.toFixed(2)),
+          subtotal,
+          discPct,
+          discountAmt,
+          gstPct,
+          gst,
+          grandTotal,
+          hardwareCost,
+          profileCost,
+          productionCost,
+          marginCost
+        };
+      }
+
+      function showToast(msg, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        const cls = type === 'error' ? 'bg-rose-600 text-white' : type === 'info' ? 'bg-stone-800 text-white dark:bg-slate-700' : 'bg-teal-700 text-white';
+        el.className = `px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold transition-opacity ${cls}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 2600);
+      }
+
+      function openModal(title, bodyHtml, footerHtml = '') {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML = bodyHtml;
+        document.getElementById('modal-footer').innerHTML = footerHtml;
+        document.getElementById('modal-backdrop').classList.remove('hidden');
+      }
+
+      function closeModal() {
+        document.getElementById('modal-backdrop').classList.add('hidden');
+      }
+
+      function toggleQuickDrawer(open) {
+        const drawer = document.getElementById('quick-drawer');
+        const backdrop = document.getElementById('quick-drawer-backdrop');
+        if (open) {
+          renderQuickDrawer();
+          backdrop.classList.remove('hidden');
+          drawer.classList.remove('translate-x-full');
+        } else {
+          backdrop.classList.add('hidden');
+          drawer.classList.add('translate-x-full');
+        }
+      }
+
+      function renderQuickDrawer() {
+        const list = document.getElementById('quick-drawer-list');
+        if (!state.quotes.length) {
+          list.innerHTML = '<div class="text-xs text-stone-400 text-center py-8">No quotations yet.</div>';
+          return;
+        }
+        list.innerHTML = state.quotes.slice(0, 15).map(q => {
+          const t = calcQuoteTotals(q);
+          return `
+            <div class="p-3 rounded-xl border border-stone-200 dark:border-slate-800 hover:border-teal-600 dark:hover:border-teal-500 transition cursor-pointer bg-stone-50/70 dark:bg-slate-800/40" data-open-quote="${q.id}">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-xs font-mono-num font-bold text-teal-700 dark:text-teal-400">${q.id}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-200 dark:bg-slate-700 font-medium">${q.status}</span>
+              </div>
+              <div class="text-xs font-semibold truncate">${q.clientName}</div>
+              <div class="text-[11px] text-stone-500 dark:text-slate-400 flex items-center justify-between mt-1">
+                <span>${t.itemCount} items • ${t.totalSqft} sqft</span>
+                <span class="font-mono-num font-bold text-stone-900 dark:text-white">${formatINR(t.grandTotal)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+        list.querySelectorAll('[data-open-quote]').forEach(el => {
+          el.addEventListener('click', () => {
+            activeQuoteId = el.getAttribute('data-open-quote');
+            toggleQuickDrawer(false);
+            navigate('quote-detail');
+          });
+        });
+      }
+
+      function buildDiagramSVG(item, size = 'lg') {
+        const wFt = Math.max(1, toFeet(item.width, item.unit || 'ft'));
+        const hFt = Math.max(1, toFeet(item.height, item.unit || 'ft'));
+        const wMm = toMm(item.width, item.unit || 'ft');
+        const hMm = toMm(item.height, item.unit || 'ft');
+
+        const maxW = size === 'sm' ? 105 : 270;
+        const maxH = size === 'sm' ? 90 : 220;
+        const ratio = Math.min(maxW / wFt, maxH / hFt);
+        const drawW = Math.max(58, Math.round(wFt * ratio));
+        const drawH = Math.max(52, Math.round(hFt * ratio));
+
+        const padL = size === 'sm' ? 10 : 42;
+        const padT = size === 'sm' ? 8 : 24;
+        const padR = size === 'sm' ? 10 : 24;
+        const padB = size === 'sm' ? 12 : 38;
+        const svgW = drawW + padL + padR;
+        const svgH = drawH + padT + padB;
+
+        const colorObj = COLOR_OPTIONS.find(c => c.name === item.color) || COLOR_OPTIONS[0];
+        const frameFill = colorObj.hex;
+        const frameStroke = colorObj.border;
+        const frameThick = size === 'sm' ? 5 : 9;
+
+        const panels = item.panels && item.panels.length ? item.panels : ['shutter'];
+        let inner = `<rect x="${padL}" y="${padT}" width="${drawW}" height="${drawH}" fill="${frameFill}" stroke="${frameStroke}" stroke-width="2" rx="2"/>`;
+        const innerX = padL + frameThick;
+        const innerW = drawW - frameThick * 2;
+        const innerTopY = padT + frameThick;
+        const innerTotalH = drawH - frameThick * 2;
+
+        inner += `<rect x="${innerX}" y="${innerTopY}" width="${innerW}" height="${innerTotalH}" fill="#ecfeff" stroke="${frameStroke}" stroke-width="1"/>`;
+
+        const adjTopH = item.topFixed ? Math.round(innerTotalH * 0.24) : 0;
+        const adjBotH = item.bottomFixed ? Math.round(innerTotalH * 0.24) : 0;
+        const adjMidY = innerTopY + adjTopH;
+        const adjMidH = Math.max(20, innerTotalH - adjTopH - adjBotH);
+
+        if (item.topFixed) {
+          inner += `<rect x="${innerX}" y="${innerTopY}" width="${innerW}" height="${adjTopH}" fill="#cffafe" stroke="${frameStroke}" stroke-width="1.5"/>`;
+          inner += `<text x="${innerX + innerW / 2}" y="${innerTopY + adjTopH / 2 + 3}" text-anchor="middle" font-size="${size === 'sm' ? 7 : 10}" fill="#0f766e" font-weight="600">FIX</text>`;
+        }
+        if (item.bottomFixed) {
+          const by = adjMidY + adjMidH;
+          inner += `<rect x="${innerX}" y="${by}" width="${innerW}" height="${adjBotH}" fill="#cffafe" stroke="${frameStroke}" stroke-width="1.5"/>`;
+          inner += `<text x="${innerX + innerW / 2}" y="${by + adjBotH / 2 + 3}" text-anchor="middle" font-size="${size === 'sm' ? 7 : 10}" fill="#0f766e" font-weight="600">FIX</text>`;
+        }
+
+        const pW = innerW / panels.length;
+        const isSliding = item.categoryId.includes('sliding');
+
+        panels.forEach((pType, idx) => {
+          const px = innerX + idx * pW;
+          const py = adjMidY;
+          inner += `<rect x="${px}" y="${py}" width="${pW}" height="${adjMidH}" fill="${pType === 'fixed' ? '#cffafe' : '#ecfeff'}" stroke="${frameStroke}" stroke-width="1.5"/>`;
+
+          if (item.grill) {
+            const bars = Math.max(2, Math.floor(pW / 22));
+            for (let b = 1; b < bars; b++) {
+              const bx = px + (pW / bars) * b;
+              inner += `<line x1="${bx}" y1="${py}" x2="${bx}" y2="${py + adjMidH}" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>`;
+            }
+          }
+          if (item.mesh && pType !== 'fixed') {
+            inner += `<rect x="${px + 3}" y="${py + 3}" width="${pW - 6}" height="${adjMidH - 6}" fill="none" stroke="#0d9488" stroke-width="1" stroke-dasharray="2,2"/>`;
+          }
+
+          if (pType === 'louver' || item.categoryId === 'ventilator') {
+            for (let s = 1; s < 6; s++) {
+              const sy = py + (adjMidH / 6) * s;
+              inner += `<line x1="${px + 4}" y1="${sy}" x2="${px + pW - 4}" y2="${sy - 3}" stroke="#334155" stroke-width="1.5"/>`;
+            }
+          } else if (pType === 'fixed' || item.categoryId === 'fixed-window') {
+            inner += `<text x="${px + pW / 2}" y="${py + adjMidH / 2 + 3}" text-anchor="middle" font-size="${size === 'sm' ? 7 : 10}" fill="#0f766e" font-weight="600">FIX</text>`;
+          } else if (isSliding) {
+            const cy = py + adjMidH / 2;
+            const dir = idx % 2 === 0 ? 1 : -1;
+            const ax1 = px + pW / 2 - 12 * dir;
+            const ax2 = px + pW / 2 + 12 * dir;
+            inner += `<line x1="${ax1}" y1="${cy}" x2="${ax2}" y2="${cy}" stroke="#0f766e" stroke-width="2"/>`;
+            inner += `<polyline points="${ax2 - 5 * dir},${cy - 4} ${ax2},${cy} ${ax2 - 5 * dir},${cy + 4}" fill="none" stroke="#0f766e" stroke-width="2"/>`;
+          } else if (item.categoryId === 'top-hung') {
+            inner += `<polyline points="${px + 3},${py + adjMidH - 3} ${px + pW / 2},${py + 4} ${px + pW - 3},${py + adjMidH - 3}" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-dasharray="4,3"/>`;
+          } else {
+            const hingeLeft = idx % 2 === 0;
+            const hx = hingeLeft ? px + 3 : px + pW - 3;
+            const ox = hingeLeft ? px + pW - 3 : px + 3;
+            inner += `<polyline points="${hx},${py + 3} ${ox},${py + adjMidH / 2} ${hx},${py + adjMidH - 3}" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-dasharray="4,3"/>`;
+            inner += `<rect x="${ox - 2}" y="${py + adjMidH / 2 - 5}" width="4" height="10" rx="1" fill="#334155"/>`;
+          }
+        });
+
+        if (size === 'lg') {
+          const dimY = padT + drawH + 16;
+          inner += `<line x1="${padL}" y1="${dimY}" x2="${padL + drawW}" y2="${dimY}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<line x1="${padL}" y1="${dimY - 4}" x2="${padL}" y2="${dimY + 4}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<line x1="${padL + drawW}" y1="${dimY - 4}" x2="${padL + drawW}" y2="${dimY + 4}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<text x="${padL + drawW / 2}" y="${dimY + 14}" text-anchor="middle" font-size="11" fill="#475569" font-weight="600">${wFt.toFixed(2)} ft (${wMm} mm)</text>`;
+
+          const dimX = padL - 14;
+          inner += `<line x1="${dimX}" y1="${padT}" x2="${dimX}" y2="${padT + drawH}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<line x1="${dimX - 4}" y1="${padT}" x2="${dimX + 4}" y2="${padT}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<line x1="${dimX - 4}" y1="${padT + drawH}" x2="${dimX + 4}" y2="${padT + drawH}" stroke="#64748b" stroke-width="1.2"/>`;
+          inner += `<text x="${dimX - 6}" y="${padT + drawH / 2}" text-anchor="middle" font-size="11" fill="#475569" font-weight="600" transform="rotate(-90 ${dimX - 6} ${padT + drawH / 2})">${hFt.toFixed(2)} ft (${hMm} mm)</text>`;
+        }
+
+        return `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" class="max-w-full h-auto mx-auto select-none">${inner}</svg>`;
+      }
+
+      function navigate(route) {
+        currentRoute = route;
+        document.querySelectorAll('.nav-item').forEach(btn => {
+          const target = btn.getAttribute('data-nav');
+          const active = target === route || ((route === 'quote-detail' || route === 'product-select' || route === 'configurator') && target === 'quotes');
+          btn.classList.toggle('bg-teal-50', active);
+          btn.classList.toggle('text-teal-800', active);
+          btn.classList.toggle('dark:bg-teal-950/60', active);
+          btn.classList.toggle('dark:text-teal-300', active);
+          btn.classList.toggle('text-stone-600', !active);
+          btn.classList.toggle('dark:text-slate-300', !active);
+          btn.classList.toggle('hover:bg-stone-100', !active);
+          btn.classList.toggle('dark:hover:bg-slate-800', !active);
+        });
+
+        const meta = {
+          'dashboard': ['Dashboard', 'MakeIt Digital demo — quotations, clients, and production metrics'],
+          'create-quotation': ['New Quotation', 'Create a client quote and assign a site engineer'],
+          'quotes': ['View Quotes', 'Search, filter, edit, and manage all UPVC quotations'],
+          'quote-detail': ['Quote Details', 'Edit quote details, configure items, and export Quote, Cutting Schedule, or Invoice'],
+          'product-select': ['Select UPVC Product', 'Choose a window, door, or ventilator category'],
+          'configurator': ['Product Configurator', 'Live 2D dimensions, panels, profile, rate, and hardware costing'],
+          'clients': ['Clients Directory', 'Add, edit, search, and manage customer records'],
+          'employees': ['Employees & Engineers', 'Add, edit, and manage site engineers'],
+          'reports': ['Reports & Analytics', 'Monthly, Item, Client, Hardware, and Quotation reports'],
+          'settings': ['Settings & Pricing', 'Edit company profile, banking, terms, profile rates, and hardware pricing'],
+          'account': ['My Account', 'Edit your admin profile details']
+        };
+        const [t, sub] = meta[route] || ['Dashboard', ''];
+        document.getElementById('page-title').textContent = t;
+        document.getElementById('page-subtitle').textContent = sub;
+
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.getElementById('sidebar-backdrop').classList.add('hidden');
+        document.getElementById('user-dropdown').classList.add('hidden');
+
+        renderMain();
+      }
+
+      function renderMain() {
+        const container = document.getElementById('main-view');
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+        if (currentRoute === 'dashboard') renderDashboard(container);
+        else if (currentRoute === 'create-quotation') renderCreateQuotation(container);
+        else if (currentRoute === 'quotes') renderQuotesList(container);
+        else if (currentRoute === 'quote-detail') renderQuoteDetail(container);
+        else if (currentRoute === 'product-select') renderProductSelect(container);
+        else if (currentRoute === 'configurator') renderConfigurator(container);
+        else if (currentRoute === 'clients') renderClients(container);
+        else if (currentRoute === 'employees') renderEmployees(container);
+        else if (currentRoute === 'reports') renderReports(container);
+        else if (currentRoute === 'settings') renderSettings(container);
+        else if (currentRoute === 'account') renderAccount(container);
+      }
+
+      function renderDashboard(el) {
+        const totalRevenue = state.quotes.reduce((s, q) => s + calcQuoteTotals(q).grandTotal, 0);
+        const totalSqft = state.quotes.reduce((s, q) => s + calcQuoteTotals(q).totalSqft, 0);
+        const profiles = getProfiles();
+
+        el.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+            <div class="space-y-1">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300">MakeIt Digital demo</span>
+              <h3 class="text-xl font-bold tracking-tight">UPVC Quotation & Cutting Schedule</h3>
+              <p class="text-xs text-stone-500 dark:text-slate-400 max-w-xl">All quotes, clients, engineers, profile rates, and hardware pricing are 100% editable and saved automatically.</p>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+              <button id="hero-settings" class="px-4 py-2.5 rounded-xl border border-stone-200 dark:border-slate-700 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-slate-800 transition">Edit Pricing</button>
+              <button id="hero-new-quote" class="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-sm transition">+ Create New Quote</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <button data-kpi-nav="quotes" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-stone-200 dark:border-slate-800 hover:border-teal-600 transition shadow-sm">
+              <div class="text-xs font-medium text-stone-500 dark:text-slate-400">All Quotes</div>
+              <div class="text-2xl font-bold font-mono-num mt-1">${state.quotes.length}</div>
+              <div class="text-[11px] text-teal-700 dark:text-teal-400 mt-1 font-medium">${formatINR(totalRevenue)} total</div>
+            </button>
+            <button data-kpi-nav="clients" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-stone-200 dark:border-slate-800 hover:border-teal-600 transition shadow-sm">
+              <div class="text-xs font-medium text-stone-500 dark:text-slate-400">Clients</div>
+              <div class="text-2xl font-bold font-mono-num mt-1">${state.clients.length}</div>
+              <div class="text-[11px] text-stone-400 mt-1">${totalSqft.toFixed(1)} total sq.ft.</div>
+            </button>
+            <button data-kpi-nav="employees" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-stone-200 dark:border-slate-800 hover:border-teal-600 transition shadow-sm">
+              <div class="text-xs font-medium text-stone-500 dark:text-slate-400">Engineers</div>
+              <div class="text-2xl font-bold font-mono-num mt-1">${state.employees.length}</div>
+              <div class="text-[11px] text-stone-400 mt-1">Active site team</div>
+            </button>
+            <button data-kpi-nav="settings" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-stone-200 dark:border-slate-800 hover:border-teal-600 transition shadow-sm">
+              <div class="text-xs font-medium text-stone-500 dark:text-slate-400">UPVC Profiles</div>
+              <div class="text-2xl font-bold font-mono-num mt-1">${profiles.length}</div>
+              <div class="text-[11px] text-stone-400 mt-1">${profiles.reduce((s, p) => s + p.series.length, 0)} series active</div>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div class="px-5 py-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between">
+                <h4 class="font-bold text-sm">Recent Quotes</h4>
+                <button id="dash-view-all" class="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline">View All</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-stone-50 dark:bg-slate-800/60 text-stone-500 dark:text-slate-400 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th class="px-4 py-3">Date</th>
+                      <th class="px-4 py-3">Quote ID</th>
+                      <th class="px-4 py-3">Items</th>
+                      <th class="px-4 py-3">Client</th>
+                      <th class="px-4 py-3">Location</th>
+                      <th class="px-4 py-3">Engineer</th>
+                      <th class="px-4 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-stone-200 dark:divide-slate-800">
+                    ${state.quotes.slice(0, 6).map(q => {
+                      const t = calcQuoteTotals(q);
+                      return `
+                        <tr class="hover:bg-stone-50 dark:hover:bg-slate-800/40 transition">
+                          <td class="px-4 py-3 whitespace-nowrap text-stone-500">${q.date}</td>
+                          <td class="px-4 py-3 font-mono-num font-semibold text-teal-700 dark:text-teal-400 whitespace-nowrap">${q.id}</td>
+                          <td class="px-4 py-3">${t.itemCount}</td>
+                          <td class="px-4 py-3 font-medium">${q.clientName}</td>
+                          <td class="px-4 py-3 text-stone-500 truncate max-w-[140px]">${q.siteAddress}</td>
+                          <td class="px-4 py-3 text-stone-500">${q.engineerName}</td>
+                          <td class="px-4 py-3 text-right">
+                            <button data-view-quote="${q.id}" class="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-semibold hover:bg-teal-100 transition">View Quote</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-5 flex flex-col">
+              <h4 class="font-bold text-sm">Cost & Margin Split</h4>
+              <p class="text-xs text-stone-500 dark:text-slate-400 mb-4">Profile vs. Hardware vs. Margin</p>
+              <div id="dash-chart-wrap" class="relative h-64 flex-1 flex items-center justify-center">
+                <canvas id="dash-chart"></canvas>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('hero-new-quote').addEventListener('click', () => navigate('create-quotation'));
+        document.getElementById('hero-settings').addEventListener('click', () => navigate('settings'));
+        document.getElementById('dash-view-all').addEventListener('click', () => navigate('quotes'));
+        el.querySelectorAll('[data-kpi-nav]').forEach(b => b.addEventListener('click', () => navigate(b.getAttribute('data-kpi-nav'))));
+        el.querySelectorAll('[data-view-quote]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            activeQuoteId = btn.getAttribute('data-view-quote');
+            navigate('quote-detail');
+          });
+        });
+
+        const totals = state.quotes.reduce((acc, q) => {
+          const t = calcQuoteTotals(q);
+          acc.profile += t.profileCost;
+          acc.hardware += t.hardwareCost;
+          acc.margin += t.marginCost;
+          return acc;
+        }, { profile: 0, hardware: 0, margin: 0 });
+
+        const ctx = document.getElementById('dash-chart');
+        if (ctx && typeof Chart !== 'undefined') {
+          chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Profile Cost', 'Hardware & Glass', 'Estimated Margin'],
+              datasets: [{
+                data: [totals.profile, totals.hardware, totals.margin],
+                backgroundColor: ['#0f766e', '#0284c7', '#10b981'],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
+            }
+          });
+        } else {
+          const sum = Math.max(1, totals.profile + totals.hardware + totals.margin);
+          document.getElementById('dash-chart-wrap').innerHTML = `
+            <div class="w-full space-y-3 text-xs">
+              <div><div class="flex justify-between mb-1"><span>Profile Cost</span><strong>${formatINR(totals.profile)}</strong></div><div class="h-2 bg-stone-100 rounded-full overflow-hidden"><div class="h-full bg-teal-700" style="width:${Math.round(totals.profile / sum * 100)}%"></div></div></div>
+              <div><div class="flex justify-between mb-1"><span>Hardware & Glass</span><strong>${formatINR(totals.hardware)}</strong></div><div class="h-2 bg-stone-100 rounded-full overflow-hidden"><div class="h-full bg-sky-600" style="width:${Math.round(totals.hardware / sum * 100)}%"></div></div></div>
+              <div><div class="flex justify-between mb-1"><span>Estimated Margin</span><strong>${formatINR(totals.margin)}</strong></div><div class="h-2 bg-stone-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width:${Math.round(totals.margin / sum * 100)}%"></div></div></div>
+            </div>
+          `;
+        }
+      }
+
+      function renderCreateQuotation(el) {
+        el.innerHTML = `
+          <div class="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200 dark:border-slate-800">
+              <div>
+                <h3 class="text-base font-bold">New Quotation Details</h3>
+                <p class="text-xs text-stone-500 dark:text-slate-400">Fill in client & site info, or load an existing client.</p>
+              </div>
+              <select id="cq-existing-client" class="text-xs px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 outline-none">
+                <option value="">Load Existing Client...</option>
+                ${state.clients.map(c => `<option value="${c.id}">${c.name} (${c.location})</option>`).join('')}
+              </select>
+            </div>
+
+            <form id="create-quote-form" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Client Name *</label>
+                  <input id="cq-name" type="text" required placeholder="e.g., Rajesh Kurian" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Phone Number *</label>
+                  <input id="cq-phone" type="tel" required placeholder="+91 98470 00000" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold mb-1">Assign Engineer *</label>
+                <div class="flex gap-2">
+                  <select id="cq-engineer" required class="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600">
+                    ${state.employees.map(e => `<option value="${e.id}">${e.name} (${e.location})</option>`).join('')}
+                  </select>
+                  <button type="button" id="cq-add-engineer" class="px-3.5 py-2 rounded-xl border border-teal-600 text-teal-700 dark:text-teal-400 text-xs font-semibold hover:bg-teal-50 dark:hover:bg-teal-950/40 whitespace-nowrap">+ Add Engineer</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Client Address</label>
+                  <textarea id="cq-client-addr" rows="2" placeholder="Billing / residential address" class="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600"></textarea>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Site Address *</label>
+                  <textarea id="cq-site-addr" rows="2" required placeholder="Installation site location" class="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600"></textarea>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold mb-1">Client Requirements</label>
+                <textarea id="cq-req" rows="3" placeholder="Glass preference, mosquito mesh, safety grill, color finish..." class="w-full px-3.5 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-teal-600"></textarea>
+              </div>
+
+              <div class="flex justify-end gap-3 pt-2">
+                <button type="button" id="cq-cancel" class="px-4 py-2.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow-sm">Create Quote</button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        document.getElementById('cq-existing-client').addEventListener('change', (e) => {
+          const c = state.clients.find(x => x.id === e.target.value);
+          if (c) {
+            document.getElementById('cq-name').value = c.name;
+            document.getElementById('cq-phone').value = c.phone;
+            document.getElementById('cq-client-addr').value = c.address;
+            document.getElementById('cq-site-addr').value = c.location;
+          }
+        });
+
+        document.getElementById('cq-add-engineer').addEventListener('click', () => openEmployeeModal(null, () => renderCreateQuotation(el)));
+        document.getElementById('cq-cancel').addEventListener('click', () => navigate('dashboard'));
+
+        document.getElementById('create-quote-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('cq-name').value.trim();
+          const phone = document.getElementById('cq-phone').value.trim();
+          const engId = document.getElementById('cq-engineer').value;
+          const eng = state.employees.find(x => x.id === engId) || state.employees[0];
+          const clientAddr = document.getElementById('cq-client-addr').value.trim() || document.getElementById('cq-site-addr').value.trim();
+          const siteAddr = document.getElementById('cq-site-addr').value.trim();
+          const req = document.getElementById('cq-req').value.trim();
+
+          let client = state.clients.find(c => c.phone === phone || c.name.toLowerCase() === name.toLowerCase());
+          if (!client) {
+            client = { id: 'CL-' + Date.now(), name, phone, location: siteAddr, address: clientAddr };
+            state.clients.unshift(client);
+          }
+
+          const today = new Date().toISOString().slice(0, 10);
+          const newId = 'QT-' + today.replace(/-/g, '') + '-' + (100 + state.quotes.length + 1);
+          state.quotes.unshift({
+            id: newId, date: today, clientId: client.id, clientName: name, clientPhone: phone,
+            clientAddress: clientAddr, siteAddress: siteAddr,
+            engineerId: eng ? eng.id : '', engineerName: eng ? eng.name : 'Unassigned',
+            requirements: req, discountPct: 0, gstPct: 18, status: 'Draft', items: []
+          });
+          activeQuoteId = newId;
+          saveState();
+          showToast(`Created ${newId}`);
+          navigate('quote-detail');
+        });
+      }
+
+      function renderQuotesList(el) {
+        const perPage = 8;
+        el.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm p-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <input id="fq-date" type="date" class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <input id="fq-id" type="text" placeholder="Filter Quote ID..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <input id="fq-client" type="text" placeholder="Filter Client Name..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <input id="fq-loc" type="text" placeholder="Filter Location..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <button id="fq-reset" class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">Clear Filters</button>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-stone-50 dark:bg-slate-800/60 text-stone-500 uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th class="px-4 py-3">Date</th>
+                    <th class="px-4 py-3">Quote ID</th>
+                    <th class="px-4 py-3">Client</th>
+                    <th class="px-4 py-3">Location</th>
+                    <th class="px-4 py-3">Engineer</th>
+                    <th class="px-4 py-3">Items / Sq.Ft.</th>
+                    <th class="px-4 py-3">Grand Total</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="quotes-table-body" class="divide-y divide-stone-200 dark:divide-slate-800"></tbody>
+              </table>
+            </div>
+            <div id="quotes-pagination" class="px-4 py-3 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between text-xs text-stone-500"></div>
+          </div>
+        `;
+
+        function drawRows() {
+          const d = document.getElementById('fq-date').value;
+          const qid = document.getElementById('fq-id').value.trim().toLowerCase();
+          const cname = document.getElementById('fq-client').value.trim().toLowerCase();
+          const loc = document.getElementById('fq-loc').value.trim().toLowerCase();
+
+          const filtered = state.quotes.filter(q => {
+            if (d && q.date !== d) return false;
+            if (qid && !q.id.toLowerCase().includes(qid)) return false;
+            if (cname && !q.clientName.toLowerCase().includes(cname)) return false;
+            if (loc && !q.siteAddress.toLowerCase().includes(loc)) return false;
+            return true;
+          });
+
+          const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+          if (quotesPage > totalPages) quotesPage = totalPages;
+          const slice = filtered.slice((quotesPage - 1) * perPage, quotesPage * perPage);
+
+          const tbody = document.getElementById('quotes-table-body');
+          if (!slice.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-stone-400">No matching quotations found.</td></tr>';
+          } else {
+            tbody.innerHTML = slice.map(q => {
+              const t = calcQuoteTotals(q);
+              return `
+                <tr class="hover:bg-stone-50 dark:hover:bg-slate-800/40">
+                  <td class="px-4 py-3 whitespace-nowrap text-stone-500">${q.date}</td>
+                  <td class="px-4 py-3 font-mono-num font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">${q.id}</td>
+                  <td class="px-4 py-3 font-medium">${q.clientName}<div class="text-[11px] text-stone-400">${q.clientPhone}</div></td>
+                  <td class="px-4 py-3 text-stone-500 max-w-[160px] truncate">${q.siteAddress}</td>
+                  <td class="px-4 py-3 text-stone-500">${q.engineerName}</td>
+                  <td class="px-4 py-3">${t.itemCount} • ${t.totalSqft} sqft</td>
+                  <td class="px-4 py-3 font-mono-num font-bold">${formatINR(t.grandTotal)}</td>
+                  <td class="px-4 py-3 text-right whitespace-nowrap space-x-1">
+                    <button data-q-view="${q.id}" class="px-2.5 py-1 rounded-lg bg-teal-700 text-white font-semibold hover:bg-teal-800">View</button>
+                    <button data-q-del="${q.id}" class="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40">Delete</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+
+          document.getElementById('quotes-pagination').innerHTML = `
+            <span>Showing ${slice.length} of ${filtered.length} quotes</span>
+            <div class="flex gap-1.5">
+              <button id="qp-prev" class="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-slate-700 ${quotesPage <= 1 ? 'opacity-40' : ''}">Prev</button>
+              <span class="px-2 py-1">Page ${quotesPage} / ${totalPages}</span>
+              <button id="qp-next" class="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-slate-700 ${quotesPage >= totalPages ? 'opacity-40' : ''}">Next</button>
+            </div>
+          `;
+          document.getElementById('qp-prev').addEventListener('click', () => { if (quotesPage > 1) { quotesPage--; drawRows(); } });
+          document.getElementById('qp-next').addEventListener('click', () => { if (quotesPage < totalPages) { quotesPage++; drawRows(); } });
+
+          tbody.querySelectorAll('[data-q-view]').forEach(btn => {
+            btn.addEventListener('click', () => { activeQuoteId = btn.getAttribute('data-q-view'); navigate('quote-detail'); });
+          });
+
+          tbody.querySelectorAll('[data-q-del]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-q-del');
+              openModal('Delete Quotation', `<p class="text-sm">Delete quotation <strong>${id}</strong>? This cannot be undone.</p>`, `
+                <button id="m-cancel" class="px-4 py-2 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold">Cancel</button>
+                <button id="m-confirm" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold">Delete</button>
+              `);
+              document.getElementById('m-cancel').addEventListener('click', closeModal);
+              document.getElementById('m-confirm').addEventListener('click', () => {
+                state.quotes = state.quotes.filter(x => x.id !== id);
+                if (activeQuoteId === id) activeQuoteId = state.quotes[0] ? state.quotes[0].id : null;
+                saveState();
+                closeModal();
+                showToast(`Deleted ${id}`, 'info');
+                drawRows();
+              });
+            });
+          });
+        }
+
+        ['fq-date', 'fq-id', 'fq-client', 'fq-loc'].forEach(id => {
+          document.getElementById(id).addEventListener('input', () => { quotesPage = 1; drawRows(); });
+        });
+        document.getElementById('fq-reset').addEventListener('click', () => {
+          ['fq-date', 'fq-id', 'fq-client', 'fq-loc'].forEach(id => { document.getElementById(id).value = ''; });
+          quotesPage = 1;
+          drawRows();
+        });
+        drawRows();
+      }
+
+      function openEditQuoteModal(quote, onSaved) {
+        openModal(`Edit Quote Details — ${quote.id}`, `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div><label class="block font-semibold mb-1">Quote Date</label><input id="eq-date" type="date" value="${quote.date}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Assigned Engineer</label>
+              <select id="eq-eng" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+                ${state.employees.map(e => `<option value="${e.id}" ${quote.engineerId === e.id ? 'selected' : ''}>${e.name} (${e.location})</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="block font-semibold mb-1">Client Name *</label><input id="eq-cname" type="text" value="${quote.clientName}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Client Phone *</label><input id="eq-cphone" type="text" value="${quote.clientPhone}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Client Address</label><input id="eq-caddr" type="text" value="${quote.clientAddress || ''}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Site Address *</label><input id="eq-saddr" type="text" value="${quote.siteAddress}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Discount (%)</label><input id="eq-disc" type="number" step="0.5" min="0" max="100" value="${quote.discountPct || 0}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">GST (%)</label><input id="eq-gst" type="number" step="0.5" min="0" max="50" value="${quote.gstPct !== undefined ? quote.gstPct : 18}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div class="sm:col-span-2"><label class="block font-semibold mb-1">Client Requirements / Notes</label><textarea id="eq-req" rows="2" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800">${quote.requirements || ''}</textarea></div>
+          </div>
+        `, `
+          <button id="eq-cancel" class="px-4 py-2 rounded-xl border border-stone-300 text-xs font-semibold">Cancel</button>
+          <button id="eq-save" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">Save Changes</button>
+        `);
+        document.getElementById('eq-cancel').addEventListener('click', closeModal);
+        document.getElementById('eq-save').addEventListener('click', () => {
+          const eng = state.employees.find(e => e.id === document.getElementById('eq-eng').value);
+          quote.date = document.getElementById('eq-date').value || quote.date;
+          quote.clientName = document.getElementById('eq-cname').value.trim() || quote.clientName;
+          quote.clientPhone = document.getElementById('eq-cphone').value.trim() || quote.clientPhone;
+          quote.clientAddress = document.getElementById('eq-caddr').value.trim();
+          quote.siteAddress = document.getElementById('eq-saddr').value.trim() || quote.siteAddress;
+          quote.discountPct = Math.max(0, Math.min(100, Number(document.getElementById('eq-disc').value) || 0));
+          quote.gstPct = Math.max(0, Number(document.getElementById('eq-gst').value) || 0);
+          quote.requirements = document.getElementById('eq-req').value.trim();
+          if (eng) { quote.engineerId = eng.id; quote.engineerName = eng.name; }
+          saveState();
+          closeModal();
+          showToast('Quote details updated');
+          if (onSaved) onSaved();
+        });
+      }
+
+      function renderQuoteDetail(el) {
+        const quote = state.quotes.find(q => q.id === activeQuoteId) || state.quotes[0];
+        if (!quote) {
+          el.innerHTML = `<div class="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center border border-stone-200 dark:border-slate-800"><p class="text-sm text-stone-500 mb-4">No quotation selected.</p><button id="qd-new" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">Create New Quote</button></div>`;
+          document.getElementById('qd-new').addEventListener('click', () => navigate('create-quotation'));
+          return;
+        }
+        activeQuoteId = quote.id;
+        const t = calcQuoteTotals(quote);
+
+        el.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="qd-back" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">← All Quotes</button>
+              <select id="qd-status" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold">
+                ${['Draft', 'Pending', 'Approved', 'Invoiced'].map(s => `<option value="${s}" ${quote.status === s ? 'selected' : ''}>Status: ${s}</option>`).join('')}
+              </select>
+              <button id="qd-edit-meta" class="px-3 py-1.5 rounded-xl border border-teal-600 text-teal-700 dark:text-teal-400 text-xs font-semibold hover:bg-teal-50 dark:hover:bg-teal-950/40">Edit Quote Details</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btn-dl-quote" class="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-sm">Quote PDF / Print</button>
+              <button id="btn-dl-cutting" class="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-sm">Cutting Schedule</button>
+              <button id="btn-dl-invoice" class="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-900 dark:bg-slate-700 text-white text-xs font-semibold shadow-sm">Tax Invoice</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-stone-200 dark:border-slate-800">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Quote Summary</div>
+              <div class="text-base font-mono-num font-bold text-teal-700 dark:text-teal-400">${quote.id}</div>
+              <div class="text-xs text-stone-500 mt-1">Date: <span class="font-medium text-stone-800 dark:text-slate-200">${quote.date}</span></div>
+              <div class="text-xs text-stone-500 mt-0.5">Items: <span class="font-medium text-stone-800 dark:text-slate-200">${t.itemCount} units (${t.totalSqft} sq.ft.)</span></div>
+              <div class="text-xs text-stone-500 mt-0.5">Engineer: <span class="font-medium text-stone-800 dark:text-slate-200">${quote.engineerName}</span></div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-stone-200 dark:border-slate-800">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Client Details</div>
+              <div class="text-base font-bold">${quote.clientName}</div>
+              <div class="text-xs text-stone-500 mt-1">${quote.clientPhone}</div>
+              <div class="text-xs text-stone-500 mt-0.5">${quote.siteAddress}</div>
+              ${quote.requirements ? `<div class="text-[11px] text-teal-700 dark:text-teal-400 mt-1.5">${quote.requirements}</div>` : ''}
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-stone-200 dark:border-slate-800">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Amount Breakdown</div>
+              <div class="flex justify-between text-xs py-0.5"><span class="text-stone-500">Subtotal</span><span class="font-mono-num font-semibold">${formatINR(t.subtotal)}</span></div>
+              ${t.discPct > 0 ? `<div class="flex justify-between text-xs py-0.5 text-emerald-600"><span>Discount (${t.discPct}%)</span><span class="font-mono-num font-semibold">-${formatINR(t.discountAmt)}</span></div>` : ''}
+              <div class="flex justify-between text-xs py-0.5"><span class="text-stone-500">GST (${t.gstPct}%)</span><span class="font-mono-num font-semibold">${formatINR(t.gst)}</span></div>
+              <div class="flex justify-between text-sm font-bold pt-2 mt-1 border-t border-stone-200 dark:border-slate-800">
+                <span>Grand Total</span>
+                <span class="font-mono-num text-teal-700 dark:text-teal-400">${formatINR(t.grandTotal)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between">
+              <h4 class="font-bold text-sm">Configured UPVC Items (${quote.items.length})</h4>
+              <button id="qd-add-item" class="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold">+ Add Items</button>
+            </div>
+            ${!quote.items.length ? `
+              <div class="p-10 text-center">
+                <p class="text-sm text-stone-500 mb-3">No windows or doors added yet.</p>
+                <button id="qd-empty-add" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">+ Add First UPVC Item</button>
+              </div>
+            ` : `
+              <div class="divide-y divide-stone-200 dark:divide-slate-800">
+                ${quote.items.map((it, idx) => {
+                  const m = calcItemMetrics(it);
+                  return `
+                    <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-stone-50/70 dark:hover:bg-slate-800/30">
+                      <div class="w-32 shrink-0 bg-stone-50 dark:bg-slate-800/60 rounded-xl p-2 border border-stone-200 dark:border-slate-700">
+                        ${buildDiagramSVG(it, 'sm')}
+                      </div>
+                      <div class="flex-1 min-w-0 space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="text-xs font-mono-num font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">#${idx + 1}</span>
+                          <span class="font-bold text-sm">${it.label || it.categoryName}</span>
+                          <span class="text-xs text-stone-400">(${it.categoryName})</span>
+                        </div>
+                        <div class="text-xs text-stone-600 dark:text-slate-300">
+                          Size: <strong>${m.wFt.toFixed(2)} ft × ${m.hFt.toFixed(2)} ft</strong> (${m.wMm} × ${m.hMm} mm) • Qty: <strong>${m.qty}</strong> • Area: <strong>${m.totalSqft} sq.ft.</strong>
+                        </div>
+                        <div class="text-[11px] text-stone-500">${it.profile} (${it.series}) • ${it.glass} • ${it.color}</div>
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                          ${it.mesh ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-semibold">Mesh</span>' : ''}
+                          ${it.grill ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-semibold">Grill</span>' : ''}
+                          ${it.topFixed ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 font-semibold">Top Fixed</span>' : ''}
+                          ${it.bottomFixed ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 font-semibold">Bottom Fixed</span>' : ''}
+                        </div>
+                      </div>
+                      <div class="sm:text-right shrink-0 flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                        <div>
+                          <div class="text-[11px] text-stone-400">${formatINR(m.ratePerSqft)} / sq.ft.</div>
+                          <div class="text-base font-mono-num font-bold">${formatINR(m.lineTotal)}</div>
+                        </div>
+                        <div class="flex gap-1.5">
+                          <button data-edit-item="${it.id}" class="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">Edit</button>
+                          <button data-del-item="${it.id}" class="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/40">Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        `;
+
+        document.getElementById('qd-back').addEventListener('click', () => navigate('quotes'));
+        document.getElementById('qd-edit-meta').addEventListener('click', () => openEditQuoteModal(quote, () => renderQuoteDetail(el)));
+        document.getElementById('qd-status').addEventListener('change', (e) => {
+          quote.status = e.target.value;
+          saveState();
+          showToast(`Status updated to ${quote.status}`);
+        });
+        document.getElementById('qd-add-item').addEventListener('click', () => navigate('product-select'));
+        const emptyBtn = document.getElementById('qd-empty-add');
+        if (emptyBtn) emptyBtn.addEventListener('click', () => navigate('product-select'));
+
+        el.querySelectorAll('[data-edit-item]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const item = quote.items.find(x => x.id === btn.getAttribute('data-edit-item'));
+            if (item) {
+              configuratorDraft = JSON.parse(JSON.stringify(item));
+              navigate('configurator');
+            }
+          });
+        });
+
+        el.querySelectorAll('[data-del-item]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            quote.items = quote.items.filter(x => x.id !== btn.getAttribute('data-del-item'));
+            saveState();
+            showToast('Item removed', 'info');
+            renderQuoteDetail(el);
+          });
+        });
+
+        document.getElementById('btn-dl-quote').addEventListener('click', () => openDocumentPreview(quote, 'quote'));
+        document.getElementById('btn-dl-cutting').addEventListener('click', () => openDocumentPreview(quote, 'cutting'));
+        document.getElementById('btn-dl-invoice').addEventListener('click', () => openDocumentPreview(quote, 'invoice'));
+      }
+
+      function openDocumentPreview(quote, docType) {
+        const s = state.settings;
+        const t = calcQuoteTotals(quote);
+        let title = 'Document Preview';
+        let html = '';
+
+        if (docType === 'quote' || docType === 'invoice') {
+          const isInv = docType === 'invoice';
+          title = isInv ? `Tax Invoice — ${quote.id}` : `Quotation — ${quote.id}`;
+          const cgst = Math.round(t.gst / 2);
+          const sgst = t.gst - cgst;
+          html = `
+            <div class="space-y-4 text-slate-900 bg-white p-4 rounded-xl border border-stone-200 text-xs">
+              <div class="flex justify-between items-start border-b border-stone-200 pb-3">
+                <div>
+                  <div class="text-lg font-extrabold text-teal-800">${s.companyName}</div>
+                  <div>${s.address}, ${s.location}</div>
+                  <div>Phone: ${s.contact} • GSTIN: <strong>${s.gstin}</strong></div>
+                </div>
+                <div class="text-right">
+                  <div class="text-base font-extrabold uppercase">${isInv ? 'TAX INVOICE' : 'QUOTATION'}</div>
+                  <div>Ref: <strong>${quote.id}</strong></div>
+                  <div>Date: ${quote.date}</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4 bg-stone-50 p-3 rounded-lg">
+                <div>
+                  <div class="font-bold text-stone-500 uppercase text-[10px]">Bill To</div>
+                  <div class="font-bold text-sm">${quote.clientName}</div>
+                  <div>${quote.clientPhone}</div>
+                  <div>${quote.clientAddress}</div>
+                </div>
+                <div>
+                  <div class="font-bold text-stone-500 uppercase text-[10px]">Site & Engineer</div>
+                  <div>Site: ${quote.siteAddress}</div>
+                  <div>Engineer: ${quote.engineerName}</div>
+                </div>
+              </div>
+              <table class="w-full border-collapse border border-stone-300 text-xs">
+                <thead class="bg-stone-100">
+                  <tr>
+                    <th class="border border-stone-300 p-2 text-left">#</th>
+                    <th class="border border-stone-300 p-2 text-left">Diagram</th>
+                    <th class="border border-stone-300 p-2 text-left">Description & Specs</th>
+                    <th class="border border-stone-300 p-2 text-right">Sq.Ft.</th>
+                    <th class="border border-stone-300 p-2 text-right">Qty</th>
+                    <th class="border border-stone-300 p-2 text-right">Rate</th>
+                    <th class="border border-stone-300 p-2 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${quote.items.map((it, idx) => {
+                    const m = calcItemMetrics(it);
+                    return `
+                      <tr>
+                        <td class="border border-stone-300 p-2">${idx + 1}</td>
+                        <td class="border border-stone-300 p-2 w-24">${buildDiagramSVG(it, 'sm')}</td>
+                        <td class="border border-stone-300 p-2">
+                          <div class="font-bold">${it.label || it.categoryName} (${it.categoryName})</div>
+                          <div>${m.wFt.toFixed(2)} ft × ${m.hFt.toFixed(2)} ft (${m.wMm} × ${m.hMm} mm)</div>
+                          <div class="text-stone-600">${it.profile} - ${it.series} | ${it.glass} | ${it.color}</div>
+                          <div class="text-stone-500">${it.mesh ? '+ Mesh ' : ''}${it.grill ? '+ Grill' : ''}</div>
+                        </td>
+                        <td class="border border-stone-300 p-2 text-right">${m.totalSqft}</td>
+                        <td class="border border-stone-300 p-2 text-right">${m.qty}</td>
+                        <td class="border border-stone-300 p-2 text-right">${formatINR(m.ratePerSqft)}</td>
+                        <td class="border border-stone-300 p-2 text-right font-bold">${formatINR(m.lineTotal)}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+              <div class="grid grid-cols-2 gap-4 pt-2">
+                <div class="space-y-1 text-[11px] text-stone-600">
+                  <div class="font-bold text-stone-800">Bank Details</div>
+                  <div>${s.bankName} (${s.branch}) • A/C: ${s.accountNumber} • IFSC: ${s.ifsc}</div>
+                  <div class="font-bold text-stone-800 pt-2">Terms & Conditions</div>
+                  <div class="whitespace-pre-line">${s.terms}</div>
+                </div>
+                <div class="space-y-1.5 text-right">
+                  <div>Subtotal: <strong>${formatINR(t.subtotal)}</strong></div>
+                  ${t.discPct > 0 ? `<div>Discount (${t.discPct}%): <strong>-${formatINR(t.discountAmt)}</strong></div>` : ''}
+                  ${isInv ? `<div>CGST (${t.gstPct / 2}%): <strong>${formatINR(cgst)}</strong></div><div>SGST (${t.gstPct / 2}%): <strong>${formatINR(sgst)}</strong></div>` : `<div>GST (${t.gstPct}%): <strong>${formatINR(t.gst)}</strong></div>`}
+                  <div class="text-base font-extrabold text-teal-800 border-t border-stone-300 pt-1.5">Grand Total: ${formatINR(t.grandTotal)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          title = `Cutting Schedule — ${quote.id}`;
+          html = `
+            <div class="space-y-4 text-slate-900 bg-white p-4 rounded-xl border border-stone-200 text-xs">
+              <div class="flex justify-between items-center border-b border-stone-200 pb-3">
+                <div>
+                  <div class="text-base font-extrabold text-emerald-800">${s.companyName} — CUTTING SCHEDULE</div>
+                  <div>Quote: <strong>${quote.id}</strong> • Client: <strong>${quote.clientName}</strong> • Engineer: ${quote.engineerName}</div>
+                </div>
+                <div class="text-right">
+                  <div>Wastage Allowance: <strong>${s.hardware.profileWastagePct}%</strong></div>
+                  <div>Date: ${quote.date}</div>
+                </div>
+              </div>
+              <table class="w-full border-collapse border border-stone-300 text-xs">
+                <thead class="bg-emerald-50">
+                  <tr>
+                    <th class="border border-stone-300 p-2 text-left">Item</th>
+                    <th class="border border-stone-300 p-2 text-right">Qty</th>
+                    <th class="border border-stone-300 p-2 text-left">Outer Frame (mm)</th>
+                    <th class="border border-stone-300 p-2 text-left">Sash / Shutter (mm)</th>
+                    <th class="border border-stone-300 p-2 text-left">GI Steel (mm)</th>
+                    <th class="border border-stone-300 p-2 text-left">Glass Size (mm)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${quote.items.map((it) => {
+                    const m = calcItemMetrics(it);
+                    const pCount = (it.panels || ['shutter']).length;
+                    const sashW = Math.max(120, Math.round((m.wMm - 88) / pCount));
+                    const sashH = Math.max(120, Math.round(m.hMm - 88));
+                    const steelW = Math.max(100, sashW - 40);
+                    const steelH = Math.max(100, sashH - 40);
+                    const glassW = Math.max(80, sashW - 76);
+                    const glassH = Math.max(80, sashH - 76);
+                    return `
+                      <tr>
+                        <td class="border border-stone-300 p-2">
+                          <div class="font-bold">${it.label || it.categoryName}</div>
+                          <div class="text-[11px] text-stone-500">${it.profile} • ${it.series} (${m.wMm}×${m.hMm}mm)</div>
+                        </td>
+                        <td class="border border-stone-300 p-2 text-right font-bold">${m.qty}</td>
+                        <td class="border border-stone-300 p-2">2× ${m.wMm}mm (H)<br/>2× ${m.hMm}mm (V)</td>
+                        <td class="border border-stone-300 p-2">${pCount * 2}× ${sashW}mm (H)<br/>${pCount * 2}× ${sashH}mm (V)</td>
+                        <td class="border border-stone-300 p-2">${pCount * 2}× ${steelW}mm<br/>${pCount * 2}× ${steelH}mm</td>
+                        <td class="border border-stone-300 p-2 font-semibold">${pCount}× (${glassW} × ${glassH} mm)</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+
+        openModal(title, html, `
+          <button id="m-doc-close" class="px-4 py-2 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold">Close</button>
+          <button id="m-doc-print" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">Print / Save PDF</button>
+        `);
+
+        document.getElementById('m-doc-close').addEventListener('click', closeModal);
+        document.getElementById('m-doc-print').addEventListener('click', () => {
+          const printEl = document.getElementById('print-area');
+          printEl.innerHTML = html;
+          printEl.classList.remove('hidden');
+          window.print();
+          printEl.classList.add('hidden');
+        });
+      }
+
+      function renderProductSelect(el) {
+        const profiles = getProfiles();
+        el.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold">Select UPVC Product Category</h3>
+              <p class="text-xs text-stone-500">Adding to Quote: <strong class="font-mono-num text-teal-700 dark:text-teal-400">${activeQuoteId}</strong></p>
+            </div>
+            <button id="ps-back" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold">← Back to Quote</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${PRODUCT_CATEGORIES.map(cat => {
+              const preview = {
+                categoryId: cat.id, categoryName: cat.name, unit: 'ft', width: cat.defaultW, height: cat.defaultH,
+                panels: cat.id.includes('sliding') ? ['shutter', 'shutter'] : cat.id === 'ventilator' ? ['louver'] : cat.id === 'fixed-window' ? ['fixed'] : ['shutter'],
+                color: 'Classic White'
+              };
+              return `
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 hover:border-teal-600 transition flex flex-col justify-between gap-4 shadow-sm">
+                  <div class="flex items-start gap-4">
+                    <div class="w-24 shrink-0 bg-stone-50 dark:bg-slate-800/60 rounded-xl p-2 border border-stone-200 dark:border-slate-700">
+                      ${buildDiagramSVG(preview, 'sm')}
+                    </div>
+                    <div>
+                      <h4 class="font-bold text-sm">${cat.name}</h4>
+                      <p class="text-xs text-stone-500 dark:text-slate-400 mt-1">${cat.desc}</p>
+                    </div>
+                  </div>
+                  <button data-pick-cat="${cat.id}" class="w-full py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold transition">Configure ${cat.name}</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        document.getElementById('ps-back').addEventListener('click', () => navigate('quote-detail'));
+        el.querySelectorAll('[data-pick-cat]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cat = PRODUCT_CATEGORIES.find(c => c.id === btn.getAttribute('data-pick-cat'));
+            configuratorDraft = {
+              id: null, categoryId: cat.id, categoryName: cat.name, label: '', unit: 'ft',
+              width: cat.defaultW, height: cat.defaultH, outerFrameMm: 60, qty: 1,
+              panels: cat.id.includes('sliding') ? ['shutter', 'shutter'] : cat.id === 'ventilator' ? ['louver'] : cat.id === 'fixed-window' ? ['fixed'] : ['shutter'],
+              topFixed: false, bottomFixed: false, mesh: false, grill: false,
+              profile: profiles[0].name, series: profiles[0].series[0],
+              glass: GLASS_OPTIONS[0].name, color: COLOR_OPTIONS[0].name, ratePerSqft: null
+            };
+            navigate('configurator');
+          });
+        });
+      }
+
+      function renderConfigurator(el) {
+        if (!configuratorDraft) { navigate('product-select'); return; }
+        const d = configuratorDraft;
+        const profiles = getProfiles();
+
+        function refresh() {
+          const m = calcItemMetrics(d);
+          const prof = profiles.find(p => p.name === d.profile) || profiles[0];
+
+          el.innerHTML = `
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-base font-bold">${d.id ? 'Edit' : 'Configure'} ${d.categoryName}</h3>
+                <p class="text-xs text-stone-500">Quote: <strong class="font-mono-num">${activeQuoteId}</strong></p>
+              </div>
+              <button id="cfg-back" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold">← Back to Quote</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 flex flex-col justify-between shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400">Live 2D Elevation</span>
+                  <span class="text-xs font-mono-num font-semibold text-teal-700 dark:text-teal-400">${m.singleSqft} sq.ft./unit</span>
+                </div>
+                <div class="py-4 flex items-center justify-center bg-stone-50 dark:bg-slate-800/40 rounded-xl border border-stone-200 dark:border-slate-700 min-h-[260px]">
+                  ${buildDiagramSVG(d, 'lg')}
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                  <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-slate-800/60">
+                    <div class="text-[10px] text-stone-400 uppercase">Total Area</div>
+                    <div class="text-sm font-mono-num font-bold">${m.totalSqft} sqft</div>
+                  </div>
+                  <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-slate-800/60">
+                    <div class="text-[10px] text-stone-400 uppercase">Rate / Sq.Ft.</div>
+                    <input id="cfg-rate" type="number" min="1" value="${m.ratePerSqft}" class="w-full text-center text-sm font-mono-num font-bold bg-transparent border-b border-stone-300 dark:border-slate-600 outline-none" title="Edit custom rate per sq.ft." />
+                  </div>
+                  <div class="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/60">
+                    <div class="text-[10px] text-teal-700 dark:text-teal-300 uppercase font-semibold">Line Total</div>
+                    <div class="text-sm font-mono-num font-bold text-teal-800 dark:text-teal-300">${formatINR(m.lineTotal)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-5 shadow-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Item Label / Room Tag</label>
+                    <input id="cfg-label" type="text" value="${d.label || ''}" placeholder="e.g., W1 - Living Room" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Unit</label>
+                    <div class="grid grid-cols-3 gap-1 bg-stone-100 dark:bg-slate-800 p-1 rounded-xl">
+                      ${['ft', 'mm', 'in'].map(u => `<button type="button" data-unit="${u}" class="py-1 rounded-lg text-xs font-semibold ${d.unit === u ? 'bg-white dark:bg-slate-700 shadow text-teal-700 dark:text-teal-300' : 'text-stone-500'}">${u === 'ft' ? 'Feet' : u === 'mm' ? 'mm' : 'Inches'}</button>`).join('')}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">Width (${d.unit})</label>
+                    <div class="flex items-center border border-stone-300 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <button type="button" data-step="width:-0.5" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">-</button>
+                      <input id="cfg-width" type="number" step="0.1" min="0.5" value="${d.width}" class="w-full text-center text-xs font-mono-num font-bold bg-transparent outline-none py-2" />
+                      <button type="button" data-step="width:0.5" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">Height (${d.unit})</label>
+                    <div class="flex items-center border border-stone-300 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <button type="button" data-step="height:-0.5" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">-</button>
+                      <input id="cfg-height" type="number" step="0.1" min="0.5" value="${d.height}" class="w-full text-center text-xs font-mono-num font-bold bg-transparent outline-none py-2" />
+                      <button type="button" data-step="height:0.5" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">Outer Frame (mm)</label>
+                    <div class="flex items-center border border-stone-300 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <button type="button" data-step="outerFrameMm:-2" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">-</button>
+                      <input id="cfg-frame" type="number" value="${d.outerFrameMm}" class="w-full text-center text-xs font-mono-num font-bold bg-transparent outline-none py-2" />
+                      <button type="button" data-step="outerFrameMm:2" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">No of Windows</label>
+                    <div class="flex items-center border border-stone-300 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <button type="button" data-step="qty:-1" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">-</button>
+                      <input id="cfg-qty" type="number" min="1" value="${d.qty}" class="w-full text-center text-xs font-mono-num font-bold bg-transparent outline-none py-2" />
+                      <button type="button" data-step="qty:1" class="px-2.5 py-2 bg-stone-100 dark:bg-slate-800 font-bold text-xs">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Layout & Add-Ons</label>
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btn-add-fixed" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">+ Add Fixed</button>
+                    <button type="button" id="btn-add-shutter" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-slate-800">+ Add Shutter</button>
+                    <button type="button" id="btn-top-fixed" class="px-3 py-1.5 rounded-xl border text-xs font-semibold ${d.topFixed ? 'bg-sky-600 text-white border-sky-600' : 'border-stone-300 dark:border-slate-700'}">Top Fixed</button>
+                    <button type="button" id="btn-bot-fixed" class="px-3 py-1.5 rounded-xl border text-xs font-semibold ${d.bottomFixed ? 'bg-sky-600 text-white border-sky-600' : 'border-stone-300 dark:border-slate-700'}">Bottom Fixed</button>
+                    <button type="button" id="btn-toggle-mesh" class="px-3 py-1.5 rounded-xl border text-xs font-semibold ${d.mesh ? 'bg-teal-700 text-white border-teal-700' : 'border-stone-300 dark:border-slate-700'}">Mesh: ${d.mesh ? 'ON' : 'OFF'}</button>
+                    <button type="button" id="btn-toggle-grill" class="px-3 py-1.5 rounded-xl border text-xs font-semibold ${d.grill ? 'bg-amber-600 text-white border-amber-600' : 'border-stone-300 dark:border-slate-700'}">Grill: ${d.grill ? 'ON' : 'OFF'}</button>
+                    ${d.panels.length > 1 ? '<button type="button" id="btn-remove-panel" class="px-3 py-1.5 rounded-xl border border-rose-300 text-rose-600 text-xs font-semibold">- Remove Panel</button>' : ''}
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-stone-200 dark:border-slate-800">
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Select Profile</label>
+                    <select id="cfg-profile" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">
+                      ${profiles.map(p => `<option value="${p.name}" ${d.profile === p.name ? 'selected' : ''}>${p.name} (₹${p.baseRate}/sqft)</option>`).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Select Series</label>
+                    <div class="flex gap-2">
+                      <select id="cfg-series" class="flex-1 px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">
+                        ${prof.series.map(sr => `<option value="${sr}" ${d.series === sr ? 'selected' : ''}>${sr}</option>`).join('')}
+                      </select>
+                      <button type="button" id="btn-load-profile" class="px-3 py-2 rounded-xl bg-stone-800 dark:bg-slate-700 text-white text-xs font-semibold whitespace-nowrap">Load Profile</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Glass Type</label>
+                    <select id="cfg-glass" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">
+                      ${GLASS_OPTIONS.map(g => `<option value="${g.name}" ${d.glass === g.name ? 'selected' : ''}>${g.name} (+₹${g.rate})</option>`).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1">Finish / Color</label>
+                    <select id="cfg-color" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">
+                      ${COLOR_OPTIONS.map(c => `<option value="${c.name}" ${d.color === c.name ? 'selected' : ''}>${c.name} (+₹${c.surcharge})</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                  <button type="button" id="cfg-save-item" class="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow-sm">
+                    ${d.id ? 'Update Item in Quote' : 'Save Item to Quote'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('cfg-back').addEventListener('click', () => navigate('quote-detail'));
+          document.getElementById('cfg-label').addEventListener('input', (e) => { d.label = e.target.value; });
+          document.getElementById('cfg-rate').addEventListener('change', (e) => {
+            const val = Number(e.target.value);
+            d.ratePerSqft = val > 0 ? val : null;
+            refresh();
+          });
+
+          el.querySelectorAll('[data-unit]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const newU = btn.getAttribute('data-unit');
+              const wFt = toFeet(d.width, d.unit);
+              const hFt = toFeet(d.height, d.unit);
+              d.unit = newU;
+              d.width = newU === 'mm' ? Math.round(wFt * 304.8) : newU === 'in' ? Number((wFt * 12).toFixed(1)) : Number(wFt.toFixed(2));
+              d.height = newU === 'mm' ? Math.round(hFt * 304.8) : newU === 'in' ? Number((hFt * 12).toFixed(1)) : Number(hFt.toFixed(2));
+              refresh();
+            });
+          });
+
+          el.querySelectorAll('[data-step]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const [field, deltaStr] = btn.getAttribute('data-step').split(':');
+              let delta = Number(deltaStr);
+              if ((field === 'width' || field === 'height') && d.unit === 'mm') delta = delta * 100;
+              if ((field === 'width' || field === 'height') && d.unit === 'in') delta = delta * 6;
+              d[field] = Math.max(field === 'qty' ? 1 : 0.5, Number((Number(d[field]) + delta).toFixed(2)));
+              refresh();
+            });
+          });
+
+          document.getElementById('cfg-width').addEventListener('change', (e) => { d.width = Math.max(0.5, Number(e.target.value) || 1); refresh(); });
+          document.getElementById('cfg-height').addEventListener('change', (e) => { d.height = Math.max(0.5, Number(e.target.value) || 1); refresh(); });
+          document.getElementById('cfg-frame').addEventListener('change', (e) => { d.outerFrameMm = Math.max(40, Number(e.target.value) || 60); });
+          document.getElementById('cfg-qty').addEventListener('change', (e) => { d.qty = Math.max(1, Number(e.target.value) || 1); refresh(); });
+
+          document.getElementById('btn-add-fixed').addEventListener('click', () => { if (d.panels.length < 5) { d.panels.push('fixed'); refresh(); } });
+          document.getElementById('btn-add-shutter').addEventListener('click', () => { if (d.panels.length < 5) { d.panels.push('shutter'); refresh(); } });
+          document.getElementById('btn-top-fixed').addEventListener('click', () => { d.topFixed = !d.topFixed; refresh(); });
+          document.getElementById('btn-bot-fixed').addEventListener('click', () => { d.bottomFixed = !d.bottomFixed; refresh(); });
+          document.getElementById('btn-toggle-mesh').addEventListener('click', () => { d.mesh = !d.mesh; d.ratePerSqft = null; refresh(); });
+          document.getElementById('btn-toggle-grill').addEventListener('click', () => { d.grill = !d.grill; d.ratePerSqft = null; refresh(); });
+
+          const remBtn = document.getElementById('btn-remove-panel');
+          if (remBtn) remBtn.addEventListener('click', () => { if (d.panels.length > 1) { d.panels.pop(); refresh(); } });
+
+          document.getElementById('cfg-profile').addEventListener('change', (e) => {
+            d.profile = e.target.value;
+            const p = profiles.find(x => x.name === d.profile);
+            d.series = p ? p.series[0] : '';
+            d.ratePerSqft = null;
+            refresh();
+          });
+          document.getElementById('cfg-series').addEventListener('change', (e) => { d.series = e.target.value; });
+          document.getElementById('btn-load-profile').addEventListener('click', () => {
+            d.ratePerSqft = null;
+            showToast(`Loaded ${d.profile} — ${d.series}`);
+            refresh();
+          });
+          document.getElementById('cfg-glass').addEventListener('change', (e) => { d.glass = e.target.value; d.ratePerSqft = null; refresh(); });
+          document.getElementById('cfg-color').addEventListener('change', (e) => { d.color = e.target.value; d.ratePerSqft = null; refresh(); });
+
+          document.getElementById('cfg-save-item').addEventListener('click', () => {
+            const quote = state.quotes.find(q => q.id === activeQuoteId);
+            if (!quote) return;
+            d.ratePerSqft = m.ratePerSqft;
+            if (d.id) {
+              const idx = quote.items.findIndex(x => x.id === d.id);
+              if (idx >= 0) quote.items[idx] = d;
+              showToast('Item updated');
+            } else {
+              d.id = 'IT-' + Date.now();
+              if (!d.label) d.label = `${d.categoryName} #${quote.items.length + 1}`;
+              quote.items.push(d);
+              showToast('Item added to quote');
+            }
+            configuratorDraft = null;
+            saveState();
+            navigate('quote-detail');
+          });
+        }
+
+        refresh();
+      }
+
+      function openClientModal(existing, onDone) {
+        const c = existing || { id: null, name: '', phone: '', location: '', address: '' };
+        openModal(existing ? 'Edit Client' : 'Add Client', `
+          <div class="space-y-3 text-xs">
+            <div><label class="block font-semibold mb-1">Client Name *</label><input id="mc-name" type="text" value="${c.name}" placeholder="Client Name" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Phone Number *</label><input id="mc-phone" type="tel" value="${c.phone}" placeholder="Phone Number" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Location</label><input id="mc-loc" type="text" value="${c.location}" placeholder="City / Area" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Address</label><textarea id="mc-addr" rows="2" placeholder="Full Address" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800">${c.address || ''}</textarea></div>
+          </div>
+        `, `
+          <button id="mc-cancel" class="px-4 py-2 rounded-xl border border-stone-300 text-xs font-semibold">Cancel</button>
+          <button id="mc-save" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">${existing ? 'Update Client' : 'Save Client'}</button>
+        `);
+        document.getElementById('mc-cancel').addEventListener('click', closeModal);
+        document.getElementById('mc-save').addEventListener('click', () => {
+          const name = document.getElementById('mc-name').value.trim();
+          const phone = document.getElementById('mc-phone').value.trim();
+          const location = document.getElementById('mc-loc').value.trim() || 'Kerala';
+          const address = document.getElementById('mc-addr').value.trim();
+          if (!name || !phone) { showToast('Name & phone required', 'error'); return; }
+          if (existing) {
+            c.name = name; c.phone = phone; c.location = location; c.address = address;
+            showToast('Client updated');
+          } else {
+            state.clients.unshift({ id: 'CL-' + Date.now(), name, phone, location, address });
+            showToast('Client added');
+          }
+          saveState();
+          closeModal();
+          if (onDone) onDone();
+        });
+      }
+
+      function renderClients(el) {
+        el.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div class="flex flex-wrap gap-2 flex-1">
+              <input id="fc-name" type="text" placeholder="Search Client Name..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <input id="fc-phone" type="text" placeholder="Search Phone..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+              <input id="fc-loc" type="text" placeholder="Search Location..." class="px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none" />
+            </div>
+            <button id="btn-add-client" class="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold">+ Add Client</button>
+          </div>
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-stone-50 dark:bg-slate-800/60 text-stone-500 uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th class="px-4 py-3">Client Name</th>
+                    <th class="px-4 py-3">Phone</th>
+                    <th class="px-4 py-3">Location</th>
+                    <th class="px-4 py-3">Quotes</th>
+                    <th class="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-tbody" class="divide-y divide-stone-200 dark:divide-slate-800"></tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        function draw() {
+          const n = document.getElementById('fc-name').value.toLowerCase();
+          const p = document.getElementById('fc-phone').value.toLowerCase();
+          const l = document.getElementById('fc-loc').value.toLowerCase();
+          const rows = state.clients.filter(c => c.name.toLowerCase().includes(n) && c.phone.toLowerCase().includes(p) && c.location.toLowerCase().includes(l));
+          const tbody = document.getElementById('clients-tbody');
+          tbody.innerHTML = rows.map(c => {
+            const qCount = state.quotes.filter(q => q.clientName.toLowerCase() === c.name.toLowerCase()).length;
+            return `
+              <tr class="hover:bg-stone-50 dark:hover:bg-slate-800/40">
+                <td class="px-4 py-3 font-semibold">${c.name}</td>
+                <td class="px-4 py-3">${c.phone}</td>
+                <td class="px-4 py-3 text-stone-500">${c.location}</td>
+                <td class="px-4 py-3 font-mono-num">${qCount}</td>
+                <td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                  <button data-edit-client="${c.id}" class="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-slate-700 text-xs font-semibold">Edit</button>
+                  <button data-del-client="${c.id}" class="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 text-xs">Remove</button>
+                </td>
+              </tr>
+            `;
+          }).join('') || '<tr><td colspan="5" class="px-4 py-8 text-center text-stone-400">No clients found.</td></tr>';
+
+          tbody.querySelectorAll('[data-edit-client]').forEach(b => {
+            b.addEventListener('click', () => {
+              const client = state.clients.find(x => x.id === b.getAttribute('data-edit-client'));
+              if (client) openClientModal(client, draw);
+            });
+          });
+          tbody.querySelectorAll('[data-del-client]').forEach(b => {
+            b.addEventListener('click', () => {
+              state.clients = state.clients.filter(x => x.id !== b.getAttribute('data-del-client'));
+              saveState();
+              draw();
+              showToast('Client removed', 'info');
+            });
+          });
+        }
+
+        ['fc-name', 'fc-phone', 'fc-loc'].forEach(id => document.getElementById(id).addEventListener('input', draw));
+        document.getElementById('btn-add-client').addEventListener('click', () => openClientModal(null, draw));
+        draw();
+      }
+
+      function openEmployeeModal(existing, onDone) {
+        const emp = existing || { id: 'EMP-' + (100 + state.employees.length + 1), name: '', phone: '', email: '', location: '', role: 'Site Engineer', address: '' };
+        openModal(existing ? 'Edit Employee / Engineer' : 'Add Employee / Engineer', `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div><label class="block font-semibold mb-1">Employee ID</label><input id="me-id" type="text" value="${emp.id}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Full Name *</label><input id="me-name" type="text" value="${emp.name}" placeholder="Full Name" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Phone *</label><input id="me-phone" type="tel" value="${emp.phone}" placeholder="Phone" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Email</label><input id="me-email" type="email" value="${emp.email || ''}" placeholder="Email" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Location</label><input id="me-loc" type="text" value="${emp.location}" placeholder="Location" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div><label class="block font-semibold mb-1">Role</label><input id="me-role" type="text" value="${emp.role}" placeholder="Role" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+            <div class="sm:col-span-2"><label class="block font-semibold mb-1">Address</label><textarea id="me-addr" rows="2" placeholder="Address" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800">${emp.address || ''}</textarea></div>
+          </div>
+        `, `
+          <button id="me-cancel" class="px-4 py-2 rounded-xl border border-stone-300 text-xs font-semibold">Cancel</button>
+          <button id="me-save" class="px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-semibold">${existing ? 'Update Employee' : 'Save Employee'}</button>
+        `);
+        document.getElementById('me-cancel').addEventListener('click', closeModal);
+        document.getElementById('me-save').addEventListener('click', () => {
+          const name = document.getElementById('me-name').value.trim();
+          const phone = document.getElementById('me-phone').value.trim();
+          if (!name || !phone) { showToast('Name & phone required', 'error'); return; }
+          const payload = {
+            id: document.getElementById('me-id').value.trim() || 'EMP-' + Date.now(),
+            name, phone,
+            email: document.getElementById('me-email').value.trim(),
+            location: document.getElementById('me-loc').value.trim() || 'Kochi',
+            role: document.getElementById('me-role').value.trim() || 'Engineer',
+            address: document.getElementById('me-addr').value.trim()
+          };
+          if (existing) {
+            Object.assign(existing, payload);
+            showToast('Employee updated');
+          } else {
+            state.employees.push(payload);
+            showToast('Employee added');
+          }
+          saveState();
+          closeModal();
+          if (onDone) onDone();
+        });
+      }
+
+      function renderEmployees(el) {
+        el.innerHTML = `
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold">Employees & Site Engineers (${state.employees.length})</h3>
+            <button id="btn-add-emp" class="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold">+ Add Employee</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${state.employees.map((emp, idx) => `
+              <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-4 space-y-2 shadow-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-mono-num font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300">${emp.id}</span>
+                  <span class="text-[11px] text-stone-400">${emp.role}</span>
+                </div>
+                <div class="font-bold text-sm">${emp.name}</div>
+                <div class="text-xs text-stone-500">${emp.phone} • ${emp.email || '—'}</div>
+                <div class="text-xs text-stone-500">${emp.location} — ${emp.address || '—'}</div>
+                <div class="flex justify-end gap-1.5 pt-2 border-t border-stone-100 dark:border-slate-800">
+                  <button data-edit-emp="${idx}" class="px-2.5 py-1 rounded-lg border border-stone-300 dark:border-slate-700 text-xs font-semibold">Edit</button>
+                  <button data-del-emp="${idx}" class="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 text-xs">Remove</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        document.getElementById('btn-add-emp').addEventListener('click', () => openEmployeeModal(null, () => renderEmployees(el)));
+        el.querySelectorAll('[data-edit-emp]').forEach(b => {
+          b.addEventListener('click', () => openEmployeeModal(state.employees[Number(b.getAttribute('data-edit-emp'))], () => renderEmployees(el)));
+        });
+        el.querySelectorAll('[data-del-emp]').forEach(b => {
+          b.addEventListener('click', () => {
+            state.employees.splice(Number(b.getAttribute('data-del-emp')), 1);
+            saveState();
+            showToast('Employee removed', 'info');
+            renderEmployees(el);
+          });
+        });
+      }
+
+      function renderReports(el) {
+        const tabs = [
+          { id: 'monthly', label: 'Monthly Report' },
+          { id: 'item', label: 'Item Report' },
+          { id: 'client', label: 'Client Report' },
+          { id: 'hardware', label: 'Hardware Report' },
+          { id: 'quotation', label: 'Quotation Report' }
+        ];
+
+        el.innerHTML = `
+          <div class="flex flex-wrap gap-2">
+            ${tabs.map(tb => `<button data-rtab="${tb.id}" class="px-3.5 py-2 rounded-xl text-xs font-semibold transition ${activeReportTab === tb.id ? 'bg-teal-700 text-white shadow-sm' : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 text-stone-600 dark:text-slate-300'}">${tb.label}</button>`).join('')}
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div class="flex flex-wrap items-center gap-2">
+              <input id="rep-start" type="date" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs" />
+              <span class="text-xs text-stone-400">to</span>
+              <input id="rep-end" type="date" class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs" />
+              <input id="rep-search" type="text" placeholder="Search Quote ID, Client, or Item..." class="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs w-56" />
+            </div>
+            <button id="rep-export-csv" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">Download CSV</button>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div id="rep-table-wrap" class="overflow-x-auto"></div>
+          </div>
+        `;
+
+        el.querySelectorAll('[data-rtab]').forEach(b => {
+          b.addEventListener('click', () => { activeReportTab = b.getAttribute('data-rtab'); renderReports(el); });
+        });
+
+        let lastCsvRows = [];
+
+        function drawReport() {
+          const sDate = document.getElementById('rep-start').value;
+          const eDate = document.getElementById('rep-end').value;
+          const qStr = document.getElementById('rep-search').value.trim().toLowerCase();
+
+          const filtered = state.quotes.filter(q => {
+            if (sDate && q.date < sDate) return false;
+            if (eDate && q.date > eDate) return false;
+            if (qStr) {
+              const hit = q.id.toLowerCase().includes(qStr) || q.clientName.toLowerCase().includes(qStr) || q.clientPhone.toLowerCase().includes(qStr) || q.items.some(i => i.categoryName.toLowerCase().includes(qStr));
+              if (!hit) return false;
+            }
+            return true;
+          });
+
+          const wrap = document.getElementById('rep-table-wrap');
+          let headers = [], rows = [], sumRow = [];
+
+          if (activeReportTab === 'monthly' || activeReportTab === 'quotation') {
+            headers = ['DATE', 'QUOTE ID', 'ITEMS', 'TOTAL', 'GST', 'SQFT', 'GRAND TOTAL'];
+            let tot = 0, gst = 0, sqft = 0, gtot = 0, cnt = 0;
+            rows = filtered.map(q => {
+              const t = calcQuoteTotals(q);
+              tot += t.subtotal; gst += t.gst; sqft += t.totalSqft; gtot += t.grandTotal; cnt += t.itemCount;
+              return [q.date, q.id, t.itemCount, formatINR(t.subtotal), formatINR(t.gst), t.totalSqft.toFixed(2), formatINR(t.grandTotal)];
+            });
+            sumRow = ['Total', '', cnt, formatINR(tot), formatINR(gst), sqft.toFixed(2), formatINR(gtot)];
+          } else if (activeReportTab === 'item') {
+            headers = ['DATE', 'QUOTE ID', 'CLIENT NAME', 'CLIENT PHONE', 'ITEMS', 'SQFT', 'GRAND TOTAL'];
+            let sqft = 0, gtot = 0, cnt = 0;
+            rows = filtered.map(q => {
+              const t = calcQuoteTotals(q);
+              sqft += t.totalSqft; gtot += t.grandTotal; cnt += t.itemCount;
+              return [q.date, q.id, q.clientName, q.clientPhone, q.items.map(i => i.categoryName).join(', ') || '—', t.totalSqft.toFixed(2), formatINR(t.grandTotal)];
+            });
+            sumRow = ['Total', '', '', '', cnt, sqft.toFixed(2), formatINR(gtot)];
+          } else if (activeReportTab === 'client') {
+            headers = ['S.NO', 'QUOTE COUNT', 'CLIENT NAME', 'CLIENT PHONE', 'TOTAL VALUE'];
+            rows = state.clients.filter(c => !qStr || c.name.toLowerCase().includes(qStr) || c.phone.includes(qStr)).map((c, idx) => {
+              const cQuotes = filtered.filter(q => q.clientName.toLowerCase() === c.name.toLowerCase());
+              const val = cQuotes.reduce((s, q) => s + calcQuoteTotals(q).grandTotal, 0);
+              return [idx + 1, cQuotes.length, c.name, c.phone, formatINR(val)];
+            });
+          } else if (activeReportTab === 'hardware') {
+            headers = ['DATE', 'QUOTE ID', 'ITEMS', 'SQFT', 'HARDWARE COST', 'PROFILE COST', 'MARGIN COST', 'PRODUCTION COST'];
+            let hw = 0, pr = 0, mg = 0, pd = 0, sqft = 0;
+            rows = filtered.map(q => {
+              const t = calcQuoteTotals(q);
+              hw += t.hardwareCost; pr += t.profileCost; mg += t.marginCost; pd += t.productionCost; sqft += t.totalSqft;
+              return [q.date, q.id, t.itemCount, t.totalSqft.toFixed(2), formatINR(t.hardwareCost), formatINR(t.profileCost), formatINR(t.marginCost), formatINR(t.productionCost)];
+            });
+            sumRow = ['Total', '', '', sqft.toFixed(2), formatINR(hw), formatINR(pr), formatINR(mg), formatINR(pd)];
+          }
+
+          lastCsvRows = [headers, ...rows];
+          wrap.innerHTML = `
+            <table class="w-full text-left text-xs">
+              <thead class="bg-stone-50 dark:bg-slate-800/60 text-stone-500 uppercase text-[10px] tracking-wider">
+                <tr>${headers.map(h => `<th class="px-4 py-3">${h}</th>`).join('')}</tr>
+              </thead>
+              <tbody class="divide-y divide-stone-200 dark:divide-slate-800">
+                ${rows.map(r => `<tr class="hover:bg-stone-50 dark:hover:bg-slate-800/40">${r.map(c => `<td class="px-4 py-3 whitespace-nowrap">${c}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center text-stone-400">No records found.</td></tr>`}
+              </tbody>
+              ${sumRow.length ? `<tfoot class="bg-stone-100 dark:bg-slate-800 font-bold"><tr>${sumRow.map(c => `<td class="px-4 py-3">${c}</td>`).join('')}</tr></tfoot>` : ''}
+            </table>
+          `;
+        }
+
+        ['rep-start', 'rep-end', 'rep-search'].forEach(id => document.getElementById(id).addEventListener('input', drawReport));
+        document.getElementById('rep-export-csv').addEventListener('click', () => {
+          const csv = lastCsvRows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `makeit-digital-${activeReportTab}-report.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('CSV downloaded');
+        });
+        drawReport();
+      }
+
+      function renderSettings(el) {
+        const s = state.settings;
+        const hw = s.hardware;
+        const profiles = getProfiles();
+        const hwFields = [
+          ['profileWastagePct', 'Profile Wastage (%)'],
+          ['steelPriceFt', 'Steel Price (₹/Feet)'],
+          ['meshPriceSqft', 'Mesh Price (₹/sq.ft.)'],
+          ['grillPriceSqft', 'Grill Price (₹/sq.ft.)'],
+          ['meshGasketMeter', 'Mesh Gasket (₹/Meter)'],
+          ['profileGasketMeter', 'Profile Gasket (₹/Meter)'],
+          ['louverBladesMeter', 'Louver Blades (₹/Meter)'],
+          ['screwsCount', 'Screws Price (₹/Count)'],
+          ['aluminiumTrackFt', 'Aluminium Track (₹/Feet)'],
+          ['groveRollerCount', 'Grove Roller (₹/Count)'],
+          ['meshRollerCount', 'Mesh Roller (₹/Count)'],
+          ['weatherStripFt', 'Weather Strip (₹/Feet)'],
+          ['bumpArrestorCount', 'Bump Arrestor (₹/Count)'],
+          ['dustArrestorFt', 'Dust Arrestor (₹/Feet)'],
+          ['meshJumpArrestorCount', 'Mesh Jump Arrestor (₹/Count)'],
+          ['adjustRollerCount', 'Adjust Roller (₹/Count)'],
+          ['doorStopperCount', 'Door Stopper (₹/Count)'],
+          ['touchLockCount', 'Touch Lock (₹/Count)'],
+          ['frictionStay12', 'Friction Stay 12" (₹)'],
+          ['frictionStay14', 'Friction Stay 14" (₹)'],
+          ['frictionStay16', 'Friction Stay 16" (₹)'],
+          ['frictionStay18', 'Friction Stay 18" (₹)'],
+          ['frictionStay20', 'Friction Stay 20" (₹)'],
+          ['espagSSCount', 'Espag w/ SS Receiver (₹)'],
+          ['securityClipCount', 'Security Clip (₹/Count)'],
+          ['runnerBlockCount', 'Runner Block (₹/Count)']
+        ];
+
+        el.innerHTML = `
+          <form id="settings-form" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-3 shadow-sm">
+                <h4 class="font-bold text-sm">Company & Brand Details</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div><label class="block font-semibold mb-1">Company Name</label><input id="st-cname" type="text" value="${s.companyName}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">GSTIN</label><input id="st-gstin" type="text" value="${s.gstin}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">Location</label><input id="st-loc" type="text" value="${s.location}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">Contact</label><input id="st-contact" type="text" value="${s.contact}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div class="sm:col-span-2"><label class="block font-semibold mb-1">Address</label><input id="st-addr" type="text" value="${s.address}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                </div>
+              </div>
+
+              <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-3 shadow-sm">
+                <h4 class="font-bold text-sm">Banking Details</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div><label class="block font-semibold mb-1">Bank</label><input id="st-bank" type="text" value="${s.bankName}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">Branch</label><input id="st-branch" type="text" value="${s.branch}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">A/c Type</label><input id="st-actype" type="text" value="${s.accountType}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div><label class="block font-semibold mb-1">A/C Number</label><input id="st-acno" type="text" value="${s.accountNumber}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                  <div class="sm:col-span-2"><label class="block font-semibold mb-1">IFS Code</label><input id="st-ifsc" type="text" value="${s.ifsc}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profile Base Rates -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-3 shadow-sm">
+              <h4 class="font-bold text-sm">UPVC Profile Base Rates (₹ / sq.ft.)</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                ${profiles.map((p, idx) => `
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">${p.name}</label>
+                    <input data-prof-rate="${idx}" type="number" min="1" value="${p.baseRate}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono-num font-semibold" />
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-2 shadow-sm">
+              <h4 class="font-bold text-sm">Terms & Conditions</h4>
+              <textarea id="st-terms" rows="4" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">${s.terms}</textarea>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-5 space-y-4 shadow-sm">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-sm">Hardware & Pricing Configuration</h4>
+                <span class="text-xs text-stone-400">26 configurable rates</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                ${hwFields.map(([key, label]) => `
+                  <div>
+                    <label class="block text-[11px] font-semibold text-stone-500 mb-1">${label}</label>
+                    <input data-hw="${key}" type="number" step="0.5" value="${hw[key]}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono-num font-semibold" />
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow-sm">Save All Settings</button>
+            </div>
+          </form>
+        `;
+
+        document.getElementById('settings-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          s.companyName = document.getElementById('st-cname').value.trim();
+          s.gstin = document.getElementById('st-gstin').value.trim();
+          s.location = document.getElementById('st-loc').value.trim();
+          s.contact = document.getElementById('st-contact').value.trim();
+          s.address = document.getElementById('st-addr').value.trim();
+          s.bankName = document.getElementById('st-bank').value.trim();
+          s.branch = document.getElementById('st-branch').value.trim();
+          s.accountType = document.getElementById('st-actype').value.trim();
+          s.accountNumber = document.getElementById('st-acno').value.trim();
+          s.ifsc = document.getElementById('st-ifsc').value.trim();
+          s.terms = document.getElementById('st-terms').value;
+          el.querySelectorAll('[data-prof-rate]').forEach(inp => {
+            const idx = Number(inp.getAttribute('data-prof-rate'));
+            if (profiles[idx]) profiles[idx].baseRate = Number(inp.value) || profiles[idx].baseRate;
+          });
+          el.querySelectorAll('[data-hw]').forEach(inp => {
+            hw[inp.getAttribute('data-hw')] = Number(inp.value) || 0;
+          });
+          saveState();
+          showToast('All settings & rates saved');
+        });
+      }
+
+      function renderAccount(el) {
+        const a = state.account;
+        el.innerHTML = `
+          <div class="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-6 space-y-5 shadow-sm">
+            <div class="flex items-center gap-4 border-b border-stone-200 dark:border-slate-800 pb-4">
+              <div class="w-14 h-14 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-xl">
+                ${a.name.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <h3 class="font-bold text-base">${a.name}</h3>
+                <p class="text-xs text-stone-500">${a.email} • Role: ${state.auth.role}</p>
+              </div>
+            </div>
+            <form id="account-form" class="space-y-4 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label class="block font-semibold mb-1">Full Name</label><input id="ac-name" type="text" value="${a.name}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                <div><label class="block font-semibold mb-1">Email</label><input id="ac-email" type="email" value="${a.email}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                <div><label class="block font-semibold mb-1">Phone</label><input id="ac-phone" type="text" value="${a.phone}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                <div><label class="block font-semibold mb-1">Location</label><input id="ac-loc" type="text" value="${a.location}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+                <div class="sm:col-span-2"><label class="block font-semibold mb-1">Address</label><input id="ac-addr" type="text" value="${a.address}" class="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-800" /></div>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="px-5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold">Update Profile</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.getElementById('account-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          a.name = document.getElementById('ac-name').value.trim() || a.name;
+          a.email = document.getElementById('ac-email').value.trim() || a.email;
+          a.phone = document.getElementById('ac-phone').value.trim();
+          a.location = document.getElementById('ac-loc').value.trim();
+          a.address = document.getElementById('ac-addr').value.trim();
+          document.getElementById('sidebar-user-name').textContent = a.name;
+          saveState();
+          showToast('Profile updated');
+          renderAccount(el);
+        });
+      }
+
+      function initEvents() {
+        document.querySelectorAll('[data-nav]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const target = btn.getAttribute('data-nav');
+            const action = btn.getAttribute('data-action');
+            navigate(target);
+            if (action === 'open-add-employee') openEmployeeModal(null, () => renderMain());
+          });
+        });
+
+        document.getElementById('top-new-quote').addEventListener('click', () => navigate('create-quotation'));
+        document.getElementById('btn-open-sidebar').addEventListener('click', () => {
+          document.getElementById('sidebar').classList.remove('-translate-x-full');
+          document.getElementById('sidebar-backdrop').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-sidebar').addEventListener('click', () => {
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.getElementById('sidebar-backdrop').classList.add('hidden');
+        });
+        document.getElementById('sidebar-backdrop').addEventListener('click', () => {
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.getElementById('sidebar-backdrop').classList.add('hidden');
+        });
+        document.getElementById('btn-user-menu').addEventListener('click', () => {
+          document.getElementById('user-dropdown').classList.toggle('hidden');
+        });
+        document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+          state.theme = state.theme === 'dark' ? 'light' : 'dark';
+          applyTheme();
+          saveState();
+        });
+        document.getElementById('btn-quick-drawer').addEventListener('click', () => toggleQuickDrawer(true));
+        document.getElementById('btn-close-drawer').addEventListener('click', () => toggleQuickDrawer(false));
+        document.getElementById('quick-drawer-backdrop').addEventListener('click', () => toggleQuickDrawer(false));
+        document.getElementById('btn-drawer-add').addEventListener('click', () => { toggleQuickDrawer(false); navigate('create-quotation'); });
+        document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+        document.getElementById('modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'modal-backdrop') closeModal(); });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+          state.auth.loggedIn = false;
+          saveState();
+          document.getElementById('app-shell').classList.add('hidden');
+          document.getElementById('login-screen').classList.remove('hidden');
+        });
+        document.getElementById('btn-demo-fill').addEventListener('click', () => {
+          document.getElementById('login-email').value = 'demo@makeitdigital.in';
+          document.getElementById('login-password').value = 'demo1234';
+          showToast('Demo credentials filled', 'info');
+        });
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          state.auth.loggedIn = true;
+          state.auth.email = document.getElementById('login-email').value.trim();
+          saveState();
+          document.getElementById('login-screen').classList.add('hidden');
+          document.getElementById('app-shell').classList.remove('hidden');
+          navigate('dashboard');
+          showToast('Welcome to MakeIt Digital demo!');
+        });
+        document.getElementById('btn-reset-demo').addEventListener('click', () => {
+          state = defaultState();
+          activeQuoteId = state.quotes[0].id;
+          saveState();
+          applyTheme();
+          navigate('dashboard');
+          showToast('Demo data restored', 'info');
+        });
+      }
+
+      applyTheme();
+      initEvents();
+      document.getElementById('sidebar-user-name').textContent = state.account.name;
+      if (!state.auth.loggedIn) {
+        document.getElementById('app-shell').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+      } else {
+        navigate('dashboard');
+      }
+    })();
+  </script>
+</body>
+</html>
